@@ -1,8 +1,15 @@
 package mrriegel.stackable;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import net.minecraft.block.Block;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.network.EnumConnectionState;
+import net.minecraft.network.EnumPacketDirection;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
@@ -12,6 +19,7 @@ import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.GameRegistry;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 @Mod(modid = Stackable.MODID, name = Stackable.NAME, version = Stackable.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
 @EventBusSubscriber
@@ -47,6 +55,12 @@ public class Stackable {
 		if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
 			ClientUtils.init();
 		}
+		Method m = ReflectionHelper.findMethod(EnumConnectionState.class, "registerPacket", "func_179245_a", EnumPacketDirection.class, Class.class);
+		try {
+			m.invoke(EnumConnectionState.PLAY, EnumPacketDirection.CLIENTBOUND, PacketConfigSync.class);
+		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Mod.EventHandler
@@ -58,6 +72,18 @@ public class Stackable {
 		if (event.getGenericType() == Block.class) {
 			event.getRegistry().register(ingots);
 			GameRegistry.registerTileEntity(TileIngots.class, ingots.getRegistryName().toString());
+		}
+	}
+
+	@SubscribeEvent
+	public static void join(EntityJoinWorldEvent event) {
+		if (event.getEntity() instanceof EntityPlayerMP && event.getEntity().getServer().isDedicatedServer()) {
+			PacketConfigSync p = new PacketConfigSync();
+			p.nbt.setInteger("a", Stackable.itemsPerIngot);
+			p.nbt.setInteger("x", Stackable.perX);
+			p.nbt.setInteger("y", Stackable.perY);
+			p.nbt.setInteger("z", Stackable.perZ);
+			((EntityPlayerMP) event.getEntity()).connection.sendPacket(p);
 		}
 	}
 

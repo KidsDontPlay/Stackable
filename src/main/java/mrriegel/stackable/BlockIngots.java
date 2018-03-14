@@ -17,13 +17,16 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.Event.Result;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -61,7 +64,7 @@ public class BlockIngots extends Block {
 		super(Material.IRON);
 		setRegistryName("ingots");
 		setUnlocalizedName(getRegistryName().toString());
-		setHardness(4.5f);
+		setHardness(6f);
 		setDefaultState(((IExtendedBlockState) getDefaultState()).withProperty(prop, null));
 	}
 
@@ -115,8 +118,10 @@ public class BlockIngots extends Block {
 			return true;
 		} else {
 			TileEntity tile = worldIn.getTileEntity(pos);
-			if (tile instanceof TileIngots) {
-				playerIn.setItemStackToSlot(hand == EnumHand.MAIN_HAND ? EntityEquipmentSlot.MAINHAND : EntityEquipmentSlot.OFFHAND, ItemHandlerHelper.insertItemStacked(tile.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), playerIn.getHeldItem(hand), false));
+			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
+				ItemStack rest = ItemHandlerHelper.insertItemStacked(tile.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), playerIn.getHeldItem(hand), false);
+				if (!playerIn.capabilities.isCreativeMode)
+					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
 			}
 			return false;
@@ -124,47 +129,72 @@ public class BlockIngots extends Block {
 	}
 
 	@Override
+	public void onBlockClicked(World worldIn, BlockPos pos, EntityPlayer playerIn) {
+		TileEntity t;
+		if (worldIn.isRemote || !((t = worldIn.getTileEntity(pos)) instanceof TileIngots) || playerIn.getHeldItemMainhand().getItem() instanceof ItemTool)
+			return;
+		//		TileIngots tile = (TileIngots) t;
+		IItemHandler handler = t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+		RayTraceResult rtr = ForgeHooks.rayTraceEyes(playerIn, playerIn.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue());
+		if (rtr == null || rtr.typeOfHit != Type.BLOCK)
+			return;
+		for (int i = handler.getSlots() - 1; i >= 0; i--) {
+			ItemStack s = handler.getStackInSlot(i);
+			if (!(s = handler.extractItem(i, playerIn.isSneaking() ? 64 : 1, false)).isEmpty()) {
+
+				EntityItem ei = new EntityItem(worldIn, pos.offset(rtr.sideHit).getX() + .5, pos.getY() + .3, pos.offset(rtr.sideHit).getZ() + .5, s);
+				worldIn.spawnEntity(ei);
+				if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(playerIn.inventory), ei.getItem(), true).isEmpty()) {
+					Vec3d vec = new Vec3d(playerIn.posX - ei.posX, playerIn.posY + .5 - ei.posY, playerIn.posZ - ei.posZ).normalize().scale(1.5);
+					ei.motionX = vec.x;
+					ei.motionY = vec.y;
+					ei.motionZ = vec.z;
+				}
+				return;
+			}
+		}
+	}
+
+	@Override
+	public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest) {
+		if (player.capabilities.isCreativeMode && !(player.getHeldItemMainhand().getItem() instanceof ItemTool)) {
+			onBlockClicked(world, pos, player);
+			return false;
+		}
+		return /*willHarvest ||*/ super.removedByPlayer(state, world, pos, player, willHarvest);
+	}
+
+	@Override
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
-			TileIngots tile = (TileIngots) t;
-			IItemHandler handler = tile.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-			IntStream.range(0, handler.getSlots()).mapToObj(handler::getStackInSlot).forEach(s -> {
-				spawnAsEntity(worldIn, pos, s.copy());
+			IItemHandler handler = t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+			IntStream.range(0, handler.getSlots()).forEach(i -> {
+				spawnAsEntity(worldIn, pos, handler.getStackInSlot(i));
 			});
 		}
 		worldIn.removeTileEntity(pos);
 	}
 
 	@SubscribeEvent
-	public static void leftclick(LeftClickBlock event) {
+	public static void rightclick(RightClickBlock event) {
 		EntityPlayer player = event.getEntityPlayer();
-		TileEntity tile = event.getWorld().getTileEntity(event.getPos());
-		if (tile instanceof TileIngots && !(player.getHeldItemMainhand().getItem() instanceof ItemTool)) {
-			IItemHandler handler = tile.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
-			if (player.world.isRemote) {
-				event.setCanceled(true);
-				event.setResult(Result.DENY);
+		if (player.isSneaking() && event.getFace() == EnumFacing.UP && (event.getHand() == EnumHand.OFF_HAND || TileIngots.validItem(event.getItemStack()))) {
+			if (event.getHand() == EnumHand.OFF_HAND) {
 				event.setUseBlock(Result.DENY);
 				return;
-			} else {
-				for (int i = handler.getSlots() - 1; i >= 0; i--) {
-					ItemStack s = handler.getStackInSlot(i);
-					if (!(s = handler.extractItem(i, 64, false)).isEmpty()) {
-						EntityItem ei = new EntityItem(player.world, event.getPos().offset(event.getFace()).getX() + .5, event.getPos().getY() + .3, event.getPos().offset(event.getFace()).getZ() + .5, s);
-						player.world.spawnEntity(ei);
-						if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(player.inventory), ei.getItem(), true).isEmpty()) {
-							Vec3d vec = new Vec3d(player.posX - ei.posX, player.posY + .5 - ei.posY, player.posZ - ei.posZ).normalize().scale(1.5);
-							ei.motionX = vec.x;
-							ei.motionY = vec.y;
-							ei.motionZ = vec.z;
-						}
-						event.setCanceled(true);
-						event.setResult(Result.DENY);
-						event.setUseBlock(Result.DENY);
-						return;
-					}
+			}
+			IBlockState state = player.world.getBlockState(event.getPos());
+			BlockPos newPos = event.getPos().offset(event.getFace());
+			if (player.world.isAirBlock(newPos)) {
+				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
+					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState());
+					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
+					t.master = true;
+					t.getBlockType().onBlockActivated(t.getWorld(), t.getPos(), t.getWorld().getBlockState(t.getPos()), player, event.getHand(), event.getFace(), 0, 0, 0);
+					//					player.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, ItemHandlerHelper.insertItemStacked(t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), event.getItemStack(), false));
 				}
+				event.setUseBlock(Result.DENY);
 			}
 		}
 	}
