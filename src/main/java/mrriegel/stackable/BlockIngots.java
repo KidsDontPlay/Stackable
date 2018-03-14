@@ -30,7 +30,6 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBloc
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.Event.Result;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.wrapper.PlayerMainInvWrapper;
@@ -119,7 +118,7 @@ public class BlockIngots extends Block {
 		} else {
 			TileEntity tile = worldIn.getTileEntity(pos);
 			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
-				ItemStack rest = ItemHandlerHelper.insertItemStacked(tile.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), playerIn.getHeldItem(hand), false);
+				ItemStack rest = ItemHandlerHelper.insertItemStacked(((TileIngots) tile).handler, playerIn.getHeldItem(hand), false);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
@@ -134,7 +133,7 @@ public class BlockIngots extends Block {
 		if (worldIn.isRemote || !((t = worldIn.getTileEntity(pos)) instanceof TileIngots) || playerIn.getHeldItemMainhand().getItem() instanceof ItemTool)
 			return;
 		//		TileIngots tile = (TileIngots) t;
-		IItemHandler handler = t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+		IItemHandler handler = ((TileIngots) t).handler;
 		RayTraceResult rtr = ForgeHooks.rayTraceEyes(playerIn, playerIn.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue());
 		if (rtr == null || rtr.typeOfHit != Type.BLOCK)
 			return;
@@ -168,7 +167,7 @@ public class BlockIngots extends Block {
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
-			IItemHandler handler = t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null);
+			IItemHandler handler = ((TileIngots) t).handler;
 			IntStream.range(0, handler.getSlots()).forEach(i -> {
 				spawnAsEntity(worldIn, pos, handler.getStackInSlot(i));
 			});
@@ -190,7 +189,7 @@ public class BlockIngots extends Block {
 				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
 					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState());
 					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
-					t.master = true;
+					t.isMaster = true;
 					t.getBlockType().onBlockActivated(t.getWorld(), t.getPos(), t.getWorld().getBlockState(t.getPos()), player, event.getHand(), event.getFace(), 0, 0, 0);
 					//					player.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, ItemHandlerHelper.insertItemStacked(t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), event.getItemStack(), false));
 				}

@@ -37,7 +37,8 @@ public class TileIngots extends TileEntity {
 	public static Set<TileIngots> tiles = Collections.newSetFromMap(new WeakHashMap<>());
 
 	public boolean needSync = true;
-	public boolean master;
+	public boolean isMaster;
+	public BlockPos masterPos;
 
 	ItemHandler handler = new ItemHandler(this);
 
@@ -86,25 +87,28 @@ public class TileIngots extends TileEntity {
 		NBTTagCompound n = compound.getCompoundTag("handler");
 		n.removeTag("Size");
 		handler.back.deserializeNBT(n);
-		master = compound.getBoolean("master");
+		isMaster = compound.getBoolean("isMaster");
+		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
 		super.readFromNBT(compound);
 	}
 
 	@Override
 	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
 		compound.setTag("handler", handler.back.serializeNBT());
-		compound.setBoolean("master", master);
+		compound.setBoolean("isMaster", isMaster);
+		if (masterPos != null)
+			compound.setLong("master", masterPos.toLong());
 		return super.writeToNBT(compound);
 	}
 
 	@Override
 	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY || super.hasCapability(capability, facing);
+		return (isMaster && capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) || super.hasCapability(capability, facing);
 	}
 
 	@Override
 	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		if (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)
+		if (isMaster && capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)
 			return (T) handler;
 		return super.getCapability(capability, facing);
 	}
@@ -185,8 +189,8 @@ public class TileIngots extends TileEntity {
 
 		@Override
 		public ItemStack extractItem(int slot, int amount, boolean simulate) {
-			if (!getStackInSlot(Math.min(slot + 1, getSlots() - 1)).isEmpty() && slot != getSlots() - 1)
-				return ItemStack.EMPTY;
+			//			if (!getStackInSlot(Math.min(slot + 1, getSlots() - 1)).isEmpty() && slot != getSlots() - 1)
+			//				return ItemStack.EMPTY;
 			ItemStack ret = back.extractItem(slot, amount, simulate);
 			if (slot == 0 && getStackInSlot(0).isEmpty() && !tile.world.isRemote) {
 				tile.toRemove = true;

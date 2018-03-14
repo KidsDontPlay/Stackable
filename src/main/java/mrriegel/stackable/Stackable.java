@@ -36,6 +36,7 @@ public class Stackable {
 	public static Configuration config;
 
 	public static int itemsPerIngot, perX, perY, perZ;
+	public static boolean useBlockTexture;
 
 	public static final Block ingots = new BlockIngots();
 
@@ -46,6 +47,7 @@ public class Stackable {
 		perX = config.getInt("x", "ingotsPerBlock", 6, 1, 32, "");
 		perY = config.getInt("y", "ingotsPerBlock", 8, 1, 32, "");
 		perZ = config.getInt("z", "ingotsPerBlock", 2, 1, 32, "");
+		useBlockTexture = config.getBoolean("useBlockTexture", config.CATEGORY_CLIENT, true, "Use textures from blocks for ingots (e.g. iron block texture for iron ingot).");
 		if (config.hasChanged())
 			config.save();
 	}

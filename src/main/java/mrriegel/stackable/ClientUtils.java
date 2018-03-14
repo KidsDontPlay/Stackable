@@ -27,7 +27,6 @@ import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemOverrideList;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.init.Blocks;
@@ -42,7 +41,6 @@ import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.oredict.OreDictionary;
@@ -124,7 +122,7 @@ public class ClientUtils {
 	}
 
 	public static void init() {
-		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("minecraft:blocks/iron_block");
+		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
 	}
 
 	@SubscribeEvent
@@ -166,13 +164,7 @@ public class ClientUtils {
 				TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
 				List<BakedQuad> quads = new ArrayList<>();
 				if (tile != null) {
-					Map<String, TextureAtlasSprite> map = ReflectionHelper.getPrivateValue(TextureMap.class, mc.getTextureMapBlocks(), "mapUploadedSprites");
-					//					System.out.println(map.size() + " ");
-					for (String s : map.keySet()) {
-						if (!s.startsWith("mine") && false)
-							System.out.println(s);
-					}
-					cachedQuads.clear();
+					//					cachedQuads.clear();
 					if (!tile.changed && cachedQuads.containsKey(tile))
 						return cachedQuads.get(tile);
 					IItemHandler handler = tile.handler;
@@ -182,7 +174,7 @@ public class ClientUtils {
 							for (int x = 0; x < Stackable.perX; x++) {
 								ItemStack s = handler.getStackInSlot(count);
 								if (!s.isEmpty())
-									createIngot(quads, s, x, y, z, sprite(s));
+									createIngot(quads, s, x, y, z, Stackable.useBlockTexture ? sprite(s) : null);
 								count++;
 							}
 						}
@@ -210,8 +202,7 @@ public class ClientUtils {
 		float r = 1f, g = 1f, b = 1f;
 		if (tas == null) {
 			tas = defaultTas;
-			int color = color(stack);
-			Color col = new Color(color);
+			Color col = new Color(color(stack));
 			float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 			col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .15f));
 			r = col.getRed() / 255f;
@@ -258,8 +249,6 @@ public class ClientUtils {
 
 	private static BakedQuad createQuad(VertexFormat format, TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b) {
 		UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(format);
-		//		tas = mc.getBlockRendererDispatcher().getModelForState(Blocks.TNT.getDefaultState()).getParticleTexture();
-		//		tas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
 		builder.setTexture(tas);
 		Vec3d normal = new Vec3d(0, 0, 0);
 		normal = new Vec3d(x3, y3, z3).subtract(new Vec3d(x2, y2, z2)).crossProduct(new Vec3d(x1, y1, z1).subtract(new Vec3d(x2, y2, z2))).normalize();
