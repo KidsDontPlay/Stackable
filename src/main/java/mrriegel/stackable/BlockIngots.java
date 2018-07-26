@@ -114,7 +114,8 @@ public class BlockIngots extends Block {
 		} else {
 			TileEntity tile = worldIn.getTileEntity(pos);
 			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
-				ItemStack rest = ItemHandlerHelper.insertItemStacked(((TileIngots) tile).handler, playerIn.getHeldItem(hand), false);
+				ItemStack rest = ((TileIngots) tile).inv.insertItem(playerIn.getHeldItem(hand), false);
+				//				ItemStack rest = ItemHandlerHelper.insertItemStacked(((TileIngots) tile).handler, playerIn.getHeldItem(hand), false);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
@@ -128,8 +129,9 @@ public class BlockIngots extends Block {
 		TileEntity t;
 		if (worldIn.isRemote || !((t = worldIn.getTileEntity(pos)) instanceof TileIngots) || playerIn.getHeldItemMainhand().getItem() instanceof ItemTool)
 			return;
-		RayTraceResult rtr=playerIn.rayTrace(playerIn.getAttributeMap().getAttributeInstance(EntityPlayer.REACH_DISTANCE).getAttributeValue(), 0);
-		if(rtr==null)return;
+		RayTraceResult rtr = playerIn.rayTrace(playerIn.getAttributeMap().getAttributeInstance(EntityPlayer.REACH_DISTANCE).getAttributeValue(), 0);
+		if (rtr == null)
+			return;
 		//		TileIngots tile = (TileIngots) t;
 		IItemHandler handler = ((TileIngots) t).handler;
 		for (int i = handler.getSlots() - 1; i >= 0; i--) {
@@ -162,8 +164,7 @@ public class BlockIngots extends Block {
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
-			IItemHandler handler = ((TileIngots) t).handler;
-			IntStream.range(0, handler.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, handler.getStackInSlot(i)));
+			((TileIngots) t).inv.inventory.entrySet().forEach(e->spawnAsEntity(worldIn, pos, ItemHandlerHelper.copyStackWithSize(e.getKey(), e.getValue())));
 		}
 		worldIn.removeTileEntity(pos);
 	}

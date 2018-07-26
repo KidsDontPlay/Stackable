@@ -1,12 +1,20 @@
 package mrriegel.stackable;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.lang3.tuple.Pair;
+
+import com.google.common.collect.ImmutableBiMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.Vec3i;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -18,7 +26,6 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.PlayerEvent.PlayerLoggedInEvent;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.relauncher.Side;
@@ -57,12 +64,6 @@ public class Stackable {
 			config.save();
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
-		MessageConfigSync p = new MessageConfigSync();
-		p.nbt.setInteger("a", Stackable.itemsPerIngot);
-		p.nbt.setInteger("x", Stackable.perX);
-		p.nbt.setInteger("y", Stackable.perY);
-		p.nbt.setInteger("z", Stackable.perZ);
-		snw.sendToAll(p);
 	}
 
 	@Mod.EventHandler
@@ -86,14 +87,32 @@ public class Stackable {
 
 	@SubscribeEvent
 	public static void join(EntityJoinWorldEvent event) {
-		if (event.getEntity() instanceof EntityPlayerMP && event.getEntity().getServer().isDedicatedServer()) {
+		if (event.getEntity() instanceof EntityPlayerMP /*&& event.getEntity().getServer().isDedicatedServer()*/) {
 			MessageConfigSync p = new MessageConfigSync();
 			p.nbt.setInteger("a", Stackable.itemsPerIngot);
 			p.nbt.setInteger("x", Stackable.perX);
 			p.nbt.setInteger("y", Stackable.perY);
 			p.nbt.setInteger("z", Stackable.perZ);
 			snw.sendTo(p, (EntityPlayerMP) event.getEntity());
+			generateConstants();
 		}
+	}
+
+	public static void generateConstants() {
+		TileIngots.maxIngotAmount = Stackable.perX * Stackable.perY * Stackable.perZ;
+		TileIngots.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
+			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
+			int count = 0;
+			for (int y = 0; y < Stackable.perY; y++) {
+				for (int z = 0; z < Stackable.perZ; z++) {
+					for (int x = 0; x < Stackable.perX; x++) {
+						l.add(Pair.of(count, new Vec3i(x, y, z)));
+						count++;
+					}
+				}
+			}
+			return l.stream();
+		}).collect(Collectors.toList())).build();
 	}
 
 }

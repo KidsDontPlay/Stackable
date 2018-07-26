@@ -19,7 +19,7 @@ public class MessageConfigSync implements IMessage, IMessageHandler<MessageConfi
 			Stackable.perX = nbt.getInteger("x");
 			Stackable.perY = nbt.getInteger("y");
 			Stackable.perZ = nbt.getInteger("z");
-			System.out.println("neggg");
+			Stackable.generateConstants();
 		});
 		return null;
 	}

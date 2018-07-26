@@ -12,11 +12,14 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
+import javax.vecmath.Vector2d;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.util.vector.Vector3f;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
@@ -41,6 +44,7 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
@@ -48,13 +52,14 @@ import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.oredict.OreDictionary;
 
 @EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
 public class ClientUtils {
-	
+
 	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileIngots.strategy);
 	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileIngots.strategy);
 	private static final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
@@ -127,7 +132,7 @@ public class ClientUtils {
 			if (t instanceof TileIngots) {
 				GlStateManager.enableBlend();
 				GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-				GlStateManager.glLineWidth(2.0F);
+				GlStateManager.glLineWidth(2.5F);
 				GlStateManager.disableTexture2D();
 				GlStateManager.depthMask(false);
 				EntityPlayer player = event.getPlayer();
@@ -135,10 +140,61 @@ public class ClientUtils {
 				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * (double) partialTicks;
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * (double) partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * (double) partialTicks;
-				RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(.25, .25, .25, .75, .75, .75).offset(t.getPos().up()).grow(0.0020000000949949026D).offset(-d3, -d4, -d5), 0.0F, 0.0F, 0.0F, 0.4F);
+				if (p != null) {
+					Color c = new Color(color);
+					float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+					float f1, f2, f3;
+					if (hsb[2] < .5 )
+						f1 = f2 = f3 = .9f;
+					else
+						f1 = f2 = f3 = .1f;
+
+					RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(p.getLeft(), p.getRight()).offset(t.getPos()).grow(-0.0040000000949949026D).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
+					event.setCanceled(true);
+				}
 				GlStateManager.depthMask(true);
 				GlStateManager.enableTexture2D();
 				GlStateManager.disableBlend();
+			}
+		}
+	}
+
+	static Pair<Vec3d, Vec3d> p = null;
+	static int color;
+
+	@SubscribeEvent
+	public static void tick(ClientTickEvent event) {
+		if (mc != null && mc.player != null) {
+			RayTraceResult rtr = mc.objectMouseOver;
+			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
+				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
+				if (t instanceof TileIngots) {
+					double reach = mc.player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
+					Vec3d p1 = mc.player.getPositionEyes(0);
+					Vec3d look = mc.player.getLook(1);
+					Vec3d p2 = p1.add(look.scale(reach));
+					//					List<Pair<Vec3d, Vec3d>> hits = new ArrayList<>();
+					Object2IntOpenHashMap<Pair<Vec3d, Vec3d>> hitMap = new Object2IntOpenHashMap<>();
+					List<Pair<Vec3d, Vec3d>> l = ((TileIngots) t).ingotPositions();
+					for (int i = 0; i < l.size(); i++) {
+						Pair<Vec3d, Vec3d> pp = l.get(i);
+						AxisAlignedBB aabb = new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos());
+						if (aabb.calculateIntercept(p1, p2) != null) {
+							//							hits.add(pp);
+							Vec3i v = TileIngots.coordMap.get(i);
+							hitMap.put(pp, color(((TileIngots) t).ingots[v.getX()][v.getY()][v.getZ()]));
+						}
+					}
+					Pair<Vec3d, Vec3d> fin = null;
+					for (Pair<Vec3d, Vec3d> pp : hitMap.keySet()) {
+						//						AxisAlignedBB aabb1 = new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos());
+						//						AxisAlignedBB aabb2 = new AxisAlignedBB(fin.getLeft(), fin.getRight()).offset(t.getPos());
+						if (fin == null || new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos()).getCenter().distanceTo(p1) < new AxisAlignedBB(fin.getLeft(), fin.getRight()).offset(t.getPos()).getCenter().distanceTo(p1))
+							fin = pp;
+					}
+					p = fin;
+					color = hitMap.getInt(p);
+				}
 			}
 		}
 	}
@@ -184,7 +240,6 @@ public class ClientUtils {
 					//					cachedQuads.clear();
 					if (!tile.changedClient && cachedQuads.containsKey(tile))
 						return cachedQuads.get(tile);
-					IItemHandler handler = tile.handler;
 					int count = 0;
 					for (int y = 0; y < Stackable.perY; y++) {
 						for (int z = 0; z < Stackable.perZ; z++) {
@@ -228,7 +283,7 @@ public class ClientUtils {
 			b = col.getBlue() / 255f;
 		}
 		float xs = 1f / Stackable.perX, ys = 1f / Stackable.perY, zs = 1f / Stackable.perZ;
-		if (y % 2 != 0 && !false) {
+		if (y % 2 != 0 && false) {
 			int k = x;
 			x = z;
 			z = k;

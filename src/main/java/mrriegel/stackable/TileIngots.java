@@ -3,31 +3,31 @@ package mrriegel.stackable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.tuple.Pair;
+
+import com.google.common.collect.BiMap;
 
 import it.unimi.dsi.fastutil.Hash.Strategy;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenCustomHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.oredict.OreDictionary;
 
 public class TileIngots extends TileEntity {
@@ -41,28 +41,13 @@ public class TileIngots extends TileEntity {
 
 		@Override
 		public boolean equals(ItemStack a, ItemStack b) {
-			return a == null || b == null ? false : a.getItemDamage() == b.getItemDamage() && a.getItem() == b.getItem();
+			return a != null && b != null && a.getItemDamage() == b.getItemDamage() && a.getItem() == b.getItem();
 		}
 	};
-
-	public boolean needSync = true;
-	public boolean isMaster;
-	public BlockPos masterPos;
-	//	private final Vector3f ingotSize = new Vector3f(1f / Stackable.perX, 1f / Stackable.perY, 1f / Stackable.perZ);
-	public final ItemStack[][][] ingots = new ItemStack[Stackable.perX][Stackable.perY][Stackable.perZ];
-	public final int maxIngotAmount = Stackable.perX * Stackable.perY * Stackable.perZ;
-
-	ItemHandler handler = new ItemHandler(this);
-
-	private AxisAlignedBB box = null;
-	public boolean changedClient = true;
-
-	public TileIngots() {
-		fillArray();
-	}
-
+	public static int maxIngotAmount = 0;
+	public static BiMap<Integer, Vec3i> coordMap = null;
 	private static Object2BooleanOpenCustomHashMap<ItemStack> validCache = new Object2BooleanOpenCustomHashMap<>(strategy);
-
+	
 	public static boolean validItem(ItemStack stack) {
 		if (stack.isEmpty())
 			return false;
@@ -72,6 +57,22 @@ public class TileIngots extends TileEntity {
 		validCache.put(stack, res);
 		return res;
 	}
+
+	public boolean needSync = true;
+	public boolean isMaster;
+	public BlockPos masterPos;
+	public final ItemStack[][][] ingots = new ItemStack[Stackable.perX][Stackable.perY][Stackable.perZ];
+	public final IngotInventory inv = new IngotInventory(this);
+	public II handler = new II(this);
+	public AxisAlignedBB box = null;
+	public List<Pair<Vec3d, Vec3d>> positions = null;
+	public boolean changedClient = true;
+
+	public TileIngots() {
+		if (FMLCommonHandler.instance().getEffectiveSide().isClient()&&!false)
+			fillArray();
+	}
+
 
 	@Override
 	public NBTTagCompound getUpdateTag() {
@@ -93,9 +94,11 @@ public class TileIngots extends TileEntity {
 	public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
 		NBTTagCompound tag = pkt.getNbtCompound();
 		readFromNBT(tag);
+		handler.items = null;
 		fillArray();
 		changedClient = true;
 		box = null;
+		positions = null;
 		if (world != null)
 			world.markBlockRangeForRenderUpdate(pos, pos);
 	}
@@ -104,32 +107,20 @@ public class TileIngots extends TileEntity {
 	public void readFromNBT(NBTTagCompound compound) {
 		NBTTagCompound n = compound.getCompoundTag("handler");
 		n.removeTag("Size");
-		handler.back.deserializeNBT(n);
+		//		handler.back.deserializeNBT(n);
 		isMaster = compound.getBoolean("isMaster");
 		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
-		NBTTagList list1 = compound.getTagList("list1", 10);
-		int[] list2 = compound.getIntArray("list2");
-		Validate.isTrue(list1.tagCount() == list2.length);
-		inventory.clear();
-		for (int i = 0; i < list1.tagCount(); i++)
-			inventory.put(new ItemStack(list1.getCompoundTagAt(i)), list2[i]);
+		inv.deserializeNBT(compound.getCompoundTag("inv"));
 		super.readFromNBT(compound);
 	}
 
 	@Override
 	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-		compound.setTag("handler", handler.back.serializeNBT());
+		//		compound.setTag("handler", handler.back.serializeNBT());
 		compound.setBoolean("isMaster", isMaster);
 		if (masterPos != null)
 			compound.setLong("master", masterPos.toLong());
-		NBTTagList list1 = new NBTTagList();
-		IntArrayList list2 = new IntArrayList();
-		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
-			list1.appendTag(e.getKey().writeToNBT(new NBTTagCompound()));
-			list2.add(e.getIntValue());
-		}
-		compound.setTag("list1", list1);
-		compound.setIntArray("list2", list2.toIntArray());
+		compound.setTag("inv", inv.serializeNBT());
 		return super.writeToNBT(compound);
 	}
 
@@ -145,43 +136,22 @@ public class TileIngots extends TileEntity {
 		return super.getCapability(capability, facing);
 	}
 
-	public ItemStack extractItem(ItemStack stack, int amount, boolean simulate) {
-		int i = inventory.getInt(stack);
-		if (i <= 0)
-			return ItemStack.EMPTY;
-		i = Math.min(amount, i);
-		if (!simulate) {
-			inventory.addTo(stack, -i);
-			if (inventory.getInt(stack) == 0) {
-				inventory.removeInt(stack);
-				if (inventory.isEmpty())
-					new Thread(() -> world.getMinecraftServer().addScheduledTask(() -> world.setBlockToAir(pos))).start();
-			}
-		}
-		return ItemHandlerHelper.copyStackWithSize(stack, i);
-	}
-
-	public ItemStack insertItem(ItemStack stack, boolean simulate) {
-		if (!validItem(stack))
-			return stack;
-		return null;
-	}
-
 	public AxisAlignedBB getBox() {
 		if (box != null)
 			return box;
+		List<ItemStack> ingotList = ingotList();
 		double yy = 1d / Stackable.perY;
 		int count = 0;
 		boolean an = false;
-		for (int i = 0; i < handler.getSlots(); i++) {
-			if (handler.getStackInSlot(i).isEmpty()) {
+		for (int i = 0; i < ingotList.size(); i++) {
+			if (ingotList.get(i).isEmpty()) {
 				count = i;
 				an = true;
 				break;
 			}
 		}
 		if (!an)
-			count = handler.getSlots();
+			count = ingotList.size();
 		int heigh = (int) Math.ceil((double) count / (Stackable.perX * Stackable.perZ));
 		if (heigh == 0)
 			heigh = 1;
@@ -189,11 +159,12 @@ public class TileIngots extends TileEntity {
 	}
 
 	private void fillArray() {
+		List<ItemStack> ingotList = ingotList();
 		int count = 0;
 		for (int y = 0; y < Stackable.perY; y++) {
 			for (int z = 0; z < Stackable.perZ; z++) {
 				for (int x = 0; x < Stackable.perX; x++) {
-					ItemStack s = handler.getStackInSlot(count);
+					ItemStack s = ingotList.get(count);
 					count++;
 					ingots[x][y][z] = s;
 				}
@@ -201,11 +172,56 @@ public class TileIngots extends TileEntity {
 		}
 	}
 
-	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(strategy);
+	public List<Pair<Vec3d, Vec3d>> ingotPositions() {
+		if (positions != null)
+			return positions;
+		List<ItemStack> ingotList = ingotList();
+		int count = 0;
+		double xs = 1. / Stackable.perX, ys = 1. / Stackable.perY, zs = 1. / Stackable.perZ;
+		Vec3d vecSize = new Vec3d(1. / Stackable.perX, 1. / Stackable.perY, 1. / Stackable.perZ);
+		List<Pair<Vec3d, Vec3d>> lis = new ArrayList<>();
+		for (int y = 0; y < Stackable.perY; y++) {
+			for (int z = 0; z < Stackable.perZ; z++) {
+				for (int x = 0; x < Stackable.perX; x++) {
+					ItemStack s = ingotList.get(count);
+					if (s.isEmpty())
+						break;
+					Vec3d v = new Vec3d(x * xs, y * ys, z * zs);
+					Pair<Vec3d, Vec3d> p = Pair.of(v, v.add(vecSize));
+					lis.add(p);
+					count++;
+				}
+			}
+		}
+		return positions = lis;
+	}
+	
+	private List<ItemStack> ingotList() {
+		List<ItemStack> ingotList = new ArrayList<>();
+		for (Object2IntMap.Entry<ItemStack> e : inv.inventory.object2IntEntrySet()) {
+			int max = Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot);
+			int value = e.getIntValue();
+			while (value > 0) {
+				if (value > max) {
+					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), max));
+					value -= max;
+				} else {
+					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), value));
+					break;
+				}
+			}
+		}
+		while (ingotList.size() > maxIngotAmount)
+			ingotList.remove(ingotList.size() - 1);
+		while (ingotList.size() < maxIngotAmount)
+			ingotList.add(ItemStack.EMPTY);
+		return ingotList;
+
+	}
 
 	private static class II implements IItemHandler {
 		TileIngots tile;
-		private int slots = -1;
+		//		private int slots = -1;
 		private List<ItemStack> items = null;
 		boolean threadStarted = false;
 
@@ -216,7 +232,8 @@ public class TileIngots extends TileEntity {
 
 		@Override
 		public int getSlots() {
-			return slots != -1 ? slots : (slots = tile.inventory.object2IntEntrySet().stream().mapToInt(e -> (int) Math.ceil(e.getIntValue() / (double) e.getKey().getMaxStackSize())).sum() + 1);
+			return getItems().size() + 1;
+			//			return slots != -1 ? slots : (slots = tile.inventory.object2IntEntrySet().stream().mapToInt(e -> (int) Math.ceil(e.getIntValue() / (double) e.getKey().getMaxStackSize())).sum() + 1);
 		}
 
 		@Override
@@ -227,7 +244,7 @@ public class TileIngots extends TileEntity {
 
 		@Override
 		public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-			ItemStack s = tile.insertItem(stack, simulate);
+			ItemStack s = tile.inv.insertItem(stack, simulate);
 			if (!simulate && s.getCount() != stack.getCount())
 				onChange();
 			return s;
@@ -236,7 +253,7 @@ public class TileIngots extends TileEntity {
 		@Override
 		public ItemStack extractItem(int slot, int amount, boolean simulate) {
 			amount = Math.min(amount, Stackable.itemsPerIngot);
-			ItemStack s = tile.extractItem(getStackInSlot(slot), amount, simulate);
+			ItemStack s = tile.inv.extractItem(getStackInSlot(slot), amount, simulate);
 			if (!simulate && !s.isEmpty())
 				onChange();
 			return s;
@@ -248,9 +265,9 @@ public class TileIngots extends TileEntity {
 		}
 
 		private void onChange() {
-			tile.needSync = true;
-			tile.markDirty();
-			tile.box = null;
+			//			tile.needSync = true;
+			//			tile.markDirty();
+			//			tile.box = null;
 			if (!threadStarted) {
 				threadStarted = true;
 				new Thread(() -> tile.world.getMinecraftServer().addScheduledTask(() -> {
@@ -260,12 +277,14 @@ public class TileIngots extends TileEntity {
 			}
 		}
 
-		private List<ItemStack> getItems() {
+		public List<ItemStack> getItems() {
 			if (items != null)
 				return items;
 			items = new ArrayList<>();
-			for (Object2IntMap.Entry<ItemStack> e : tile.inventory.object2IntEntrySet()) {
+			for (Object2IntMap.Entry<ItemStack> e : tile.inv.inventory.object2IntEntrySet()) {
 				int stacks = (int) Math.ceil(e.getIntValue() / (double) e.getKey().getMaxStackSize());
+				if (e.getIntValue() == e.getKey().getMaxStackSize())
+					stacks++;
 				for (int i = 0; i < stacks - 1; i++)
 					items.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), e.getKey().getMaxStackSize()));
 				int lastSize = e.getIntValue() % e.getKey().getMaxStackSize();
@@ -276,85 +295,4 @@ public class TileIngots extends TileEntity {
 		}
 	}
 
-	private static class ItemHandler implements IItemHandler {
-
-		TileIngots tile;
-		boolean empty = true;
-		final int size = Stackable.perX * Stackable.perY * Stackable.perZ;
-		ItemStackHandlerBack back = new ItemStackHandlerBack(size);
-
-		public ItemHandler(TileIngots tile) {
-			super();
-			this.tile = tile;
-		}
-
-		@Override
-		public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
-			if (!validItem(stack))
-				return stack;
-			return back.insertItem(slot, stack, simulate);
-		}
-
-		@Override
-		public ItemStack getStackInSlot(int slot) {
-			return back.getStackInSlot(slot);
-		}
-
-		@Override
-		public int getSlots() {
-			return back.getSlots();
-		}
-
-		@Override
-		public int getSlotLimit(int slot) {
-			return back.getSlotLimit(slot);
-		}
-
-		@Override
-		public ItemStack extractItem(int slot, int amount, boolean simulate) {
-			//			if (!getStackInSlot(Math.min(slot + 1, getSlots() - 1)).isEmpty() && slot != getSlots() - 1)
-			//				return ItemStack.EMPTY;
-			ItemStack ret = back.extractItem(slot, amount, simulate);
-			if (slot == 0 && getStackInSlot(0).isEmpty() && !tile.world.isRemote && false) {
-				new Thread(() -> tile.world.getMinecraftServer().addScheduledTask(() -> tile.world.setBlockToAir(tile.pos))).start();
-			}
-			if (!simulate && !ret.isEmpty() && false)
-				back.onLoad();
-			return ret;
-		}
-
-		private class ItemStackHandlerBack extends ItemStackHandler {
-
-			public ItemStackHandlerBack(int size) {
-				super(size);
-			}
-
-			@Override
-			protected void onContentsChanged(int slot) {
-				tile.needSync = true;
-				tile.markDirty();
-				tile.box = null;
-			}
-
-			@Override
-			public int getSlotLimit(int slot) {
-				return Stackable.itemsPerIngot;
-			}
-
-			@Override
-			public void onLoad() {
-				empty = stacks.stream().allMatch(ItemStack::isEmpty);
-				if (true)
-					return;
-				List<ItemStack> l = stacks.stream().filter(s -> !s.isEmpty()).collect(Collectors.toList());
-				for (int i = 0; i < stacks.size(); i++)
-					stacks.set(i, ItemStack.EMPTY);
-				for (int j = 0; j < l.size(); j++)
-					stacks.set(j, l.get(j));
-				System.out.println("load");
-			}
-
-		}
-
-	}
 }
