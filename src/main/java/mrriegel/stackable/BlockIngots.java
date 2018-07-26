@@ -26,15 +26,11 @@ import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.fml.common.eventhandler.Event.Result;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.wrapper.PlayerMainInvWrapper;
 
-@EventBusSubscriber(modid = Stackable.MODID)
 public class BlockIngots extends Block {
 	public static final IUnlistedProperty<TileIngots> prop = new IUnlistedProperty<TileIngots>() {
 
@@ -132,16 +128,15 @@ public class BlockIngots extends Block {
 		TileEntity t;
 		if (worldIn.isRemote || !((t = worldIn.getTileEntity(pos)) instanceof TileIngots) || playerIn.getHeldItemMainhand().getItem() instanceof ItemTool)
 			return;
+		RayTraceResult rtr=playerIn.rayTrace(playerIn.getAttributeMap().getAttributeInstance(EntityPlayer.REACH_DISTANCE).getAttributeValue(), 0);
+		if(rtr==null)return;
 		//		TileIngots tile = (TileIngots) t;
 		IItemHandler handler = ((TileIngots) t).handler;
-		RayTraceResult rtr = ForgeHooks.rayTraceEyes(playerIn, playerIn.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue());
-		if (rtr == null || rtr.typeOfHit != Type.BLOCK)
-			return;
 		for (int i = handler.getSlots() - 1; i >= 0; i--) {
-			ItemStack s = handler.getStackInSlot(i);
-			if (!(s = handler.extractItem(i, playerIn.isSneaking() ? 64 : 1, false)).isEmpty()) {
-
-				EntityItem ei = new EntityItem(worldIn, pos.offset(rtr.sideHit).getX() + .5, pos.getY() + .3, pos.offset(rtr.sideHit).getZ() + .5, s);
+			ItemStack s = handler.extractItem(i, playerIn.isSneaking() ? 64 : 1, false);
+			if (!s.isEmpty()) {
+				Vec3d point = playerIn.getPositionEyes(1F).add(playerIn.getLookVec().scale(1.5));
+				EntityItem ei = new EntityItem(worldIn, point.x, point.y, point.z, s);
 				worldIn.spawnEntity(ei);
 				if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(playerIn.inventory), ei.getItem(), true).isEmpty()) {
 					Vec3d vec = new Vec3d(playerIn.posX - ei.posX, playerIn.posY + .5 - ei.posY, playerIn.posZ - ei.posZ).normalize().scale(1.5);
@@ -160,7 +155,7 @@ public class BlockIngots extends Block {
 			onBlockClicked(world, pos, player);
 			return false;
 		}
-		return /*willHarvest ||*/ super.removedByPlayer(state, world, pos, player, willHarvest);
+		return super.removedByPlayer(state, world, pos, player, willHarvest);
 	}
 
 	@Override
@@ -168,34 +163,9 @@ public class BlockIngots extends Block {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
 			IItemHandler handler = ((TileIngots) t).handler;
-			IntStream.range(0, handler.getSlots()).forEach(i -> {
-				spawnAsEntity(worldIn, pos, handler.getStackInSlot(i));
-			});
+			IntStream.range(0, handler.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, handler.getStackInSlot(i)));
 		}
 		worldIn.removeTileEntity(pos);
-	}
-
-	@SubscribeEvent
-	public static void rightclick(RightClickBlock event) {
-		EntityPlayer player = event.getEntityPlayer();
-		if (player.isSneaking() && event.getFace() == EnumFacing.UP && (event.getHand() == EnumHand.OFF_HAND || TileIngots.validItem(event.getItemStack()))) {
-			if (event.getHand() == EnumHand.OFF_HAND) {
-				event.setUseBlock(Result.DENY);
-				return;
-			}
-			IBlockState state = player.world.getBlockState(event.getPos());
-			BlockPos newPos = event.getPos().offset(event.getFace());
-			if (player.world.isAirBlock(newPos)) {
-				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
-					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState());
-					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
-					t.isMaster = true;
-					t.getBlockType().onBlockActivated(t.getWorld(), t.getPos(), t.getWorld().getBlockState(t.getPos()), player, event.getHand(), event.getFace(), 0, 0, 0);
-					//					player.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, ItemHandlerHelper.insertItemStacked(t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), event.getItemStack(), false));
-				}
-				event.setUseBlock(Result.DENY);
-			}
-		}
 	}
 
 }

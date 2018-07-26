@@ -15,13 +15,14 @@ import javax.vecmath.Point2f;
 
 import org.lwjgl.util.vector.Vector3f;
 
-import it.unimi.dsi.fastutil.Hash.Strategy;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemOverrideList;
@@ -29,12 +30,18 @@ import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
+import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
@@ -45,24 +52,11 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.oredict.OreDictionary;
 
-@EventBusSubscriber(modid = Stackable.MODID, value = { Side.CLIENT })
+@EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
 public class ClientUtils {
-
-	private static final Strategy<ItemStack> strategy = new Strategy<ItemStack>() {
-
-		@Override
-		public int hashCode(ItemStack o) {
-			return o == null ? 0 : (o.getItemDamage() + "" + o.getItem().getRegistryName()).hashCode();
-		}
-
-		@Override
-		public boolean equals(ItemStack a, ItemStack b) {
-			return a == null || b == null ? false : a.getItemDamage() == b.getItemDamage() && a.getItem() == b.getItem();
-		}
-	};
-
-	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(strategy);
-	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(strategy);
+	
+	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileIngots.strategy);
+	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileIngots.strategy);
 	private static final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
 	private static Minecraft mc;
 	private static TextureAtlasSprite defaultTas;
@@ -126,6 +120,30 @@ public class ClientUtils {
 	}
 
 	@SubscribeEvent
+	public static void draw(DrawBlockHighlightEvent event) {
+		RayTraceResult rtr = event.getTarget();
+		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
+			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
+			if (t instanceof TileIngots) {
+				GlStateManager.enableBlend();
+				GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+				GlStateManager.glLineWidth(2.0F);
+				GlStateManager.disableTexture2D();
+				GlStateManager.depthMask(false);
+				EntityPlayer player = event.getPlayer();
+				float partialTicks = event.getPartialTicks();
+				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * (double) partialTicks;
+				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * (double) partialTicks;
+				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * (double) partialTicks;
+				RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(.25, .25, .25, .75, .75, .75).offset(t.getPos().up()).grow(0.0020000000949949026D).offset(-d3, -d4, -d5), 0.0F, 0.0F, 0.0F, 0.4F);
+				GlStateManager.depthMask(true);
+				GlStateManager.enableTexture2D();
+				GlStateManager.disableBlend();
+			}
+		}
+	}
+
+	@SubscribeEvent
 	public static void stich(TextureStitchEvent event) {
 		event.getMap().registerSprite(new ResourceLocation("stackable:blocks/ingots"));
 	}
@@ -134,7 +152,6 @@ public class ClientUtils {
 	public static void bake(ModelBakeEvent event) {
 		mc = Minecraft.getMinecraft();
 		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IBakedModel() {
-			TextureAtlasSprite tex = mc.getTextureMapBlocks().getAtlasSprite("minecraft:blocks/glass");
 
 			@Override
 			public boolean isGui3d() {
@@ -153,33 +170,34 @@ public class ClientUtils {
 
 			@Override
 			public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
+				if (side != null)
+					return Collections.emptyList();
 				StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
 				if ("getDamageModel".equals(ste.getMethodName())) {
 					IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();
 					IBakedModel m = mc.getBlockRendererDispatcher().getModelForState(cobble);
 					return m.getQuads(cobble, side, rand);
 				}
-				if (side != null)
-					return Collections.emptyList();
 				TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
 				List<BakedQuad> quads = new ArrayList<>();
 				if (tile != null) {
 					//					cachedQuads.clear();
-					if (!tile.changed && cachedQuads.containsKey(tile))
+					if (!tile.changedClient && cachedQuads.containsKey(tile))
 						return cachedQuads.get(tile);
 					IItemHandler handler = tile.handler;
 					int count = 0;
 					for (int y = 0; y < Stackable.perY; y++) {
 						for (int z = 0; z < Stackable.perZ; z++) {
 							for (int x = 0; x < Stackable.perX; x++) {
-								ItemStack s = handler.getStackInSlot(count);
+								//								ItemStack s = handler.getStackInSlot(count);
+								ItemStack s = tile.ingots[x][y][z];
 								if (!s.isEmpty())
 									createIngot(quads, s, x, y, z, Stackable.useBlockTexture ? sprite(s) : null);
 								count++;
 							}
 						}
 					}
-					tile.changed = false;
+					tile.changedClient = false;
 					cachedQuads.put(tile, quads);
 				}
 				return quads;
@@ -187,7 +205,7 @@ public class ClientUtils {
 
 			@Override
 			public TextureAtlasSprite getParticleTexture() {
-				return tex;
+				return defaultTas;
 			}
 
 			@Override
@@ -210,7 +228,7 @@ public class ClientUtils {
 			b = col.getBlue() / 255f;
 		}
 		float xs = 1f / Stackable.perX, ys = 1f / Stackable.perY, zs = 1f / Stackable.perZ;
-		if (y % 2 != 0) {
+		if (y % 2 != 0 && !false) {
 			int k = x;
 			x = z;
 			z = k;
@@ -250,11 +268,9 @@ public class ClientUtils {
 	private static BakedQuad createQuad(VertexFormat format, TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b) {
 		UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(format);
 		builder.setTexture(tas);
-		Vec3d normal = new Vec3d(0, 0, 0);
-		normal = new Vec3d(x3, y3, z3).subtract(new Vec3d(x2, y2, z2)).crossProduct(new Vec3d(x1, y1, z1).subtract(new Vec3d(x2, y2, z2))).normalize();
+		Vec3d normal = new Vec3d(x3, y3, z3).subtract(new Vec3d(x2, y2, z2)).crossProduct(new Vec3d(x1, y1, z1).subtract(new Vec3d(x2, y2, z2))).normalize();
 		Point2f p1 = new Point2f(0, 0), p2 = new Point2f(0, 16), p3 = new Point2f(16, 16), p4 = new Point2f(16, 0);
-		boolean compressed = true;
-		if (!compressed) {
+		if (!Stackable.useCompressedTexture) {
 			//z
 			if (normal.z > .5 || normal.z < -.5) {
 				p1.x = x1 * 16;
@@ -310,8 +326,8 @@ public class ClientUtils {
 					u = sprite.getInterpolatedU(u);
 					v = sprite.getInterpolatedV(v);
 					builder.put(e, u, v, 0f, 1f);
-					break;
 				}
+				break;
 			case NORMAL:
 				builder.put(e, (float) normal.x, (float) normal.y, (float) normal.z, 0f);
 				break;
