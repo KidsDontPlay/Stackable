@@ -12,28 +12,32 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraftforge.common.util.INBTSerializable;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
-public class IngotInventory implements INBTSerializable<NBTTagCompound> {
+public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
 
 	private final TileIngots tile;
 	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileIngots.strategy);
-	List<Ingot> ingots = null;
+	List<ItemStack> items = null;
+	boolean threadStarted = false;
 
 	public IngotInventory(TileIngots tile) {
 		this.tile = tile;
 	}
 
 	public ItemStack extractItem(ItemStack stack, int amount, boolean simulate) {
+		if (stack.isEmpty())
+			return ItemStack.EMPTY;
 		int i = inventory.getInt(stack);
+		i = Math.min(amount, i);
 		if (i <= 0)
 			return ItemStack.EMPTY;
-		i = Math.min(amount, i);
 		if (!simulate) {
 			inventory.addTo(stack, -i);
 			if (inventory.getInt(stack) == 0) {
 				inventory.removeInt(stack);
-				if (inventory.isEmpty())
+				if (inventory.isEmpty() && !tile.getWorld().isRemote)
 					new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> tile.getWorld().setBlockToAir(tile.getPos()))).start();
 			}
 			onChange();
@@ -45,7 +49,6 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound> {
 		if (!TileIngots.validItem(stack))
 			return stack;
 		int canInsert = freeItems(stack);
-		//		System.out.println(canInsert+" can");
 		if (!simulate && canInsert > 0) {
 			inventory.addTo(stack, Math.min(stack.getCount(), canInsert));
 			onChange();
@@ -54,28 +57,20 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound> {
 	}
 
 	private void onChange() {
-		ingots = null;
+		if (tile.getWorld().isRemote)
+			return;
 		tile.needSync = true;
 		tile.markDirty();
 		tile.box = null;
 		tile.positions = null;
+		if (!threadStarted) {
+			threadStarted = true;
+			new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> {
+				items = null;
+				threadStarted = false;
+			})).start();
+		}
 	}
-
-//	public List<Ingot> getIngots() {
-//		if (ingots != null)
-//			return ingots;
-//		ingots = new ArrayList<>();
-//		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
-//			int max = Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot);
-//			int stacks = (int) Math.ceil(e.getIntValue() / (double) max);
-//			for (int i = 0; i < stacks - 1; i++)
-//				ingots.add(new Ingot(e.getKey(), max));
-//			int lastSize = e.getIntValue() % max;
-//			if (lastSize > 0)
-//				ingots.add(new Ingot(e.getKey(), lastSize));
-//		}
-//		return ingots;
-//	}
 
 	int freeItems(ItemStack stack) {
 		int max = Math.min(stack.getMaxStackSize(), Stackable.itemsPerIngot);
@@ -98,7 +93,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound> {
 				occuIngots += Math.ceil(e.getIntValue() / (double) (Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot)));
 			}
 		}
-		int freeIngots = tile.maxIngotAmount - occuIngots;
+		int freeIngots = TileIngots.maxIngotAmount - occuIngots;
 		free += max * freeIngots;
 		return free;
 	}
@@ -128,14 +123,47 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound> {
 			inventory.put(new ItemStack(list1.getCompoundTagAt(i)), list2[i]);
 	}
 
-	private static class Ingot {
-		ItemStack stack;
-		int amount;
+	@Override
+	public int getSlots() {
+		return getItems().size() + 1;
+	}
 
-		public Ingot(ItemStack stack, int amount) {
-			this.stack = stack;
-			this.amount = amount;
+	@Override
+	public ItemStack getStackInSlot(int slot) {
+		List<ItemStack> l = getItems();
+		return slot >= 0 && slot < l.size() ? l.get(slot) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+		return insertItem(stack, simulate);
+	}
+
+	@Override
+	public ItemStack extractItem(int slot, int amount, boolean simulate) {
+		amount = Math.min(amount, Stackable.itemsPerIngot);
+		return extractItem(getStackInSlot(slot), amount, simulate);
+	}
+
+	@Override
+	public int getSlotLimit(int slot) {
+		return 64;
+	}
+
+	public List<ItemStack> getItems() {
+		if (items != null)
+			return items;
+		items = new ArrayList<>();
+		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
+			int value = e.getIntValue();
+			int max = e.getKey().getMaxStackSize();
+			while (value > 0) {
+				int f = Math.min(max, value);
+				items.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), f));
+				value -= f;
+			}
 		}
+		return items;
 	}
 
 }

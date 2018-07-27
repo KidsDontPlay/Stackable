@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -12,14 +13,12 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
-import javax.vecmath.Vector2d;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.util.vector.Vector3f;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
@@ -54,7 +53,6 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
 import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.oredict.OreDictionary;
 
 @EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
@@ -144,11 +142,11 @@ public class ClientUtils {
 					Color c = new Color(color);
 					float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
 					float f1, f2, f3;
-					if (hsb[2] < .5 )
-						f1 = f2 = f3 = .9f;
+					if (hsb[2] < .5)
+						f1 = f2 = f3 = 1f;
 					else
-						f1 = f2 = f3 = .1f;
-
+						f1 = f2 = f3 = 0f;
+					//					f1 = f2 = f3 = 1f;
 					RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(p.getLeft(), p.getRight()).offset(t.getPos()).grow(-0.0040000000949949026D).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
 					event.setCanceled(true);
 				}
@@ -164,7 +162,7 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void tick(ClientTickEvent event) {
-		if (mc != null && mc.player != null) {
+		if (mc != null && mc.player != null && !mc.isGamePaused()) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
@@ -173,27 +171,36 @@ public class ClientUtils {
 					Vec3d p1 = mc.player.getPositionEyes(0);
 					Vec3d look = mc.player.getLook(1);
 					Vec3d p2 = p1.add(look.scale(reach));
-					//					List<Pair<Vec3d, Vec3d>> hits = new ArrayList<>();
-					Object2IntOpenHashMap<Pair<Vec3d, Vec3d>> hitMap = new Object2IntOpenHashMap<>();
+					HashMap<Pair<Vec3d, Vec3d>, Pair<Integer, RayTraceResult>> hitMap = new HashMap<>();
 					List<Pair<Vec3d, Vec3d>> l = ((TileIngots) t).ingotPositions();
 					for (int i = 0; i < l.size(); i++) {
 						Pair<Vec3d, Vec3d> pp = l.get(i);
 						AxisAlignedBB aabb = new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos());
-						if (aabb.calculateIntercept(p1, p2) != null) {
-							//							hits.add(pp);
+						RayTraceResult rtr2 = null;
+						if ((rtr2 = aabb.calculateIntercept(p1, p2)) != null) {
 							Vec3i v = TileIngots.coordMap.get(i);
-							hitMap.put(pp, color(((TileIngots) t).ingots[v.getX()][v.getY()][v.getZ()]));
+							hitMap.put(pp, Pair.of(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(v))), rtr2));
 						}
 					}
 					Pair<Vec3d, Vec3d> fin = null;
-					for (Pair<Vec3d, Vec3d> pp : hitMap.keySet()) {
-						//						AxisAlignedBB aabb1 = new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos());
-						//						AxisAlignedBB aabb2 = new AxisAlignedBB(fin.getLeft(), fin.getRight()).offset(t.getPos());
-						if (fin == null || new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos()).getCenter().distanceTo(p1) < new AxisAlignedBB(fin.getLeft(), fin.getRight()).offset(t.getPos()).getCenter().distanceTo(p1))
+					RayTraceResult r1 = null;
+					for (Map.Entry<Pair<Vec3d, Vec3d>, Pair<Integer, RayTraceResult>> e : hitMap.entrySet()) {
+						Pair<Vec3d, Vec3d> pp = e.getKey();
+						if (fin == null) {
 							fin = pp;
+							r1 = hitMap.get(pp).getRight();
+							continue;
+						}
+						RayTraceResult r2 = e.getValue().getRight();
+						Vec3d v1 = e.getValue().getRight().hitVec, v2 = r1.hitVec;
+						if (v1.distanceTo(p1) < v2.distanceTo(p1)) {
+							fin = pp;
+							r1 = r2;
+						}
 					}
 					p = fin;
-					color = hitMap.getInt(p);
+					if (p != null)
+						color = hitMap.get(p).getLeft();
 				}
 			}
 		}
@@ -240,17 +247,12 @@ public class ClientUtils {
 					//					cachedQuads.clear();
 					if (!tile.changedClient && cachedQuads.containsKey(tile))
 						return cachedQuads.get(tile);
-					int count = 0;
-					for (int y = 0; y < Stackable.perY; y++) {
-						for (int z = 0; z < Stackable.perZ; z++) {
-							for (int x = 0; x < Stackable.perX; x++) {
-								//								ItemStack s = handler.getStackInSlot(count);
-								ItemStack s = tile.ingots[x][y][z];
-								if (!s.isEmpty())
-									createIngot(quads, s, x, y, z, Stackable.useBlockTexture ? sprite(s) : null);
-								count++;
-							}
-						}
+					List<ItemStack> stacks = tile.ingotList();
+					List<AxisAlignedBB> aabbs = tile.io.ingotBoxes();
+					int size = Math.min(stacks.size(), aabbs.size());
+					for (int i = 0; i < size; i++) {
+						ItemStack s = stacks.get(i);
+						createIngot(quads, s, aabbs.get(i), Stackable.useBlockTexture ? sprite(s) : null);
 					}
 					tile.changedClient = false;
 					cachedQuads.put(tile, quads);
@@ -271,7 +273,7 @@ public class ClientUtils {
 		});
 	}
 
-	private static void createIngot(List<BakedQuad> quads, ItemStack stack, int x, int y, int z, @Nullable TextureAtlasSprite tas) {
+	private static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {
 		float r = 1f, g = 1f, b = 1f;
 		if (tas == null) {
 			tas = defaultTas;
@@ -282,29 +284,18 @@ public class ClientUtils {
 			g = col.getGreen() / 255f;
 			b = col.getBlue() / 255f;
 		}
-		float xs = 1f / Stackable.perX, ys = 1f / Stackable.perY, zs = 1f / Stackable.perZ;
-		if (y % 2 != 0 && false) {
-			int k = x;
-			x = z;
-			z = k;
-			float ks = xs;
-			xs = zs;
-			zs = ks;
-		}
-		float diffX = xs * .1f, diffZ = zs * .1f;
-		//				diffX = diffZ = .02f;
-		if (diffX > diffZ)
-			diffX = diffZ;
-		else
-			diffZ = diffX;
-		Vector3f va = new Vector3f(0 + (diffX * .2f) + xs * x, 0 + ys * y, 0 + (diffZ * .2f) + zs * z), //
-				vb = new Vector3f(0 + (diffX * .2f) + xs * x, 0 + ys * y, zs - (diffZ * .2f) + zs * z), //
-				vc = new Vector3f(0 + diffX + xs * x, ys + ys * y, zs - diffZ + zs * z), //
-				vd = new Vector3f(0 + diffX + xs * x, ys + ys * y, 0 + diffZ + zs * z), //
-				ve = new Vector3f(xs - (diffX * .2f) + xs * x, 0 + ys * y, 0 + (diffZ * .2f) + zs * z), //
-				vf = new Vector3f(xs - (diffX * .2f) + xs * x, 0 + ys * y, zs - (diffZ * .2f) + zs * z), //
-				vg = new Vector3f(xs - diffX + xs * x, ys + ys * y, zs - diffZ + zs * z), //
-				vh = new Vector3f(xs - diffX + xs * x, ys + ys * y, 0 + diffZ + zs * z);
+		boolean flag = aabb.maxX - aabb.minX > aabb.maxZ - aabb.minZ;
+		double a1 = !flag ? aabb.maxX - aabb.minX : aabb.maxZ - aabb.minZ;
+		double a2 = !flag ? aabb.maxX - aabb.minX : aabb.maxZ - aabb.minZ;
+		float diffX = (float) (a1 * .1), diffZ = (float) (a2 * .1);
+		Vector3f va = new Vector3f((float) aabb.minX + (diffX * .2f), (float) aabb.minY, (float) aabb.minZ + (diffZ * .2f)), //
+				vb = new Vector3f((float) aabb.minX + (diffX * .2f), (float) aabb.minY, (float) aabb.maxZ - (diffZ * .2f)), //
+				vc = new Vector3f((float) aabb.minX + diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
+				vd = new Vector3f((float) aabb.minX + diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ), //
+				ve = new Vector3f((float) aabb.maxX - (diffX * .2f), (float) aabb.minY, (float) aabb.minZ + (diffZ * .2f)), //
+				vf = new Vector3f((float) aabb.maxX - (diffX * .2f), (float) aabb.minY, (float) aabb.maxZ - (diffZ * .2f)), //
+				vg = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
+				vh = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ);
 		//bottom
 		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, va, ve, vf, vb, r, g, b));
 		//top

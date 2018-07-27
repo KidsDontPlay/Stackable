@@ -18,16 +18,12 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
-import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.wrapper.PlayerMainInvWrapper;
 
@@ -115,7 +111,6 @@ public class BlockIngots extends Block {
 			TileEntity tile = worldIn.getTileEntity(pos);
 			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
 				ItemStack rest = ((TileIngots) tile).inv.insertItem(playerIn.getHeldItem(hand), false);
-				//				ItemStack rest = ItemHandlerHelper.insertItemStacked(((TileIngots) tile).handler, playerIn.getHeldItem(hand), false);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
@@ -132,23 +127,38 @@ public class BlockIngots extends Block {
 		RayTraceResult rtr = playerIn.rayTrace(playerIn.getAttributeMap().getAttributeInstance(EntityPlayer.REACH_DISTANCE).getAttributeValue(), 0);
 		if (rtr == null)
 			return;
-		//		TileIngots tile = (TileIngots) t;
-		IItemHandler handler = ((TileIngots) t).handler;
-		for (int i = handler.getSlots() - 1; i >= 0; i--) {
-			ItemStack s = handler.extractItem(i, playerIn.isSneaking() ? 64 : 1, false);
-			if (!s.isEmpty()) {
-				Vec3d point = playerIn.getPositionEyes(1F).add(playerIn.getLookVec().scale(1.5));
-				EntityItem ei = new EntityItem(worldIn, point.x, point.y, point.z, s);
-				worldIn.spawnEntity(ei);
-				if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(playerIn.inventory), ei.getItem(), true).isEmpty()) {
-					Vec3d vec = new Vec3d(playerIn.posX - ei.posX, playerIn.posY + .5 - ei.posY, playerIn.posZ - ei.posZ).normalize().scale(1.5);
-					ei.motionX = vec.x;
-					ei.motionY = vec.y;
-					ei.motionZ = vec.z;
-				}
-				return;
+		IngotObject io = ((TileIngots) t).io;
+		ItemStack target = io.lookingStack(playerIn);
+		if (target.isEmpty())
+			return;
+		ItemStack s = ((TileIngots) t).inv.extractItem(target, playerIn.isSneaking() ? 64 : 1, false);
+		if (!s.isEmpty()) {
+			Vec3d point = playerIn.getPositionEyes(1F).add(playerIn.getLookVec().scale(1.5));
+			EntityItem ei = new EntityItem(worldIn, point.x, point.y, point.z, s);
+			worldIn.spawnEntity(ei);
+			if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(playerIn.inventory), ei.getItem(), true).isEmpty()) {
+				Vec3d vec = new Vec3d(playerIn.posX - ei.posX, playerIn.posY + .5 - ei.posY, playerIn.posZ - ei.posZ).normalize().scale(1.5);
+				ei.motionX = vec.x;
+				ei.motionY = vec.y;
+				ei.motionZ = vec.z;
 			}
 		}
+		//		IItemHandler handler = ((TileIngots) t).handler;
+		//		for (int i = handler.getSlots() - 1; i >= 0; i--) {
+		//			ItemStack s = handler.extractItem(i, playerIn.isSneaking() ? 64 : 1, false);
+		//			if (!s.isEmpty()) {
+		//				Vec3d point = playerIn.getPositionEyes(1F).add(playerIn.getLookVec().scale(1.5));
+		//				EntityItem ei = new EntityItem(worldIn, point.x, point.y, point.z, s);
+		//				worldIn.spawnEntity(ei);
+		//				if (ItemHandlerHelper.insertItem(new PlayerMainInvWrapper(playerIn.inventory), ei.getItem(), true).isEmpty()) {
+		//					Vec3d vec = new Vec3d(playerIn.posX - ei.posX, playerIn.posY + .5 - ei.posY, playerIn.posZ - ei.posZ).normalize().scale(1.5);
+		//					ei.motionX = vec.x;
+		//					ei.motionY = vec.y;
+		//					ei.motionZ = vec.z;
+		//				}
+		//				return;
+		//			}
+		//		}
 	}
 
 	@Override
@@ -164,7 +174,9 @@ public class BlockIngots extends Block {
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
-			((TileIngots) t).inv.inventory.entrySet().forEach(e->spawnAsEntity(worldIn, pos, ItemHandlerHelper.copyStackWithSize(e.getKey(), e.getValue())));
+			//			((TileIngots) t).inv.inventory.entrySet().forEach(e->spawnAsEntity(worldIn, pos, ItemHandlerHelper.copyStackWithSize(e.getKey(), e.getValue())));
+			IntStream.range(0, ((TileIngots) t).inv.getSlots()).mapToObj(i -> ((TileIngots) t).inv.getStackInSlot(i)).//
+					forEach(s -> spawnAsEntity(worldIn, pos, s));
 		}
 		worldIn.removeTileEntity(pos);
 	}

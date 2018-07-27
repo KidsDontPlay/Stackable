@@ -75,6 +75,7 @@ public class Stackable {
 
 	@Mod.EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
+		generateConstants();
 	}
 
 	@SubscribeEvent
@@ -94,7 +95,7 @@ public class Stackable {
 			p.nbt.setInteger("y", Stackable.perY);
 			p.nbt.setInteger("z", Stackable.perZ);
 			snw.sendTo(p, (EntityPlayerMP) event.getEntity());
-			generateConstants();
+			//			generateConstants();
 		}
 	}
 
