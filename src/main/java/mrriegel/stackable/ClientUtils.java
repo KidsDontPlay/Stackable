@@ -5,7 +5,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -104,7 +103,8 @@ public class ClientUtils {
 				String block = s.replace("ingot", "block");
 				for (ItemStack b : OreDictionary.getOres(block)) {
 					if (b.getItem() instanceof ItemBlock) {
-						TextureAtlasSprite tmp = mc.getBlockRendererDispatcher().getModelForState(((ItemBlock) b.getItem()).getBlock().getDefaultState()).getParticleTexture();
+						IBlockState state = ((ItemBlock) b.getItem()).getBlock().getStateFromMeta(b.getMetadata());
+						TextureAtlasSprite tmp = mc.getBlockRendererDispatcher().getModelForState(state).getParticleTexture();
 						if (tmp != mc.getTextureMapBlocks().getMissingSprite()) {
 							tas = tmp;
 							break main;
@@ -139,7 +139,7 @@ public class ClientUtils {
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * (double) partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * (double) partialTicks;
 				if (p != null) {
-					Color c = new Color(color);
+					Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(index))));
 					float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
 					float f1, f2, f3;
 					if (hsb[2] < .5)
@@ -147,7 +147,7 @@ public class ClientUtils {
 					else
 						f1 = f2 = f3 = 0f;
 					//					f1 = f2 = f3 = 1f;
-					RenderGlobal.drawSelectionBoundingBox(new AxisAlignedBB(p.getLeft(), p.getRight()).offset(t.getPos()).grow(-0.0040000000949949026D).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
+					RenderGlobal.drawSelectionBoundingBox(p.offset(t.getPos()).grow(-0.0040000000949949026D).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
 					event.setCanceled(true);
 				}
 				GlStateManager.depthMask(true);
@@ -157,8 +157,8 @@ public class ClientUtils {
 		}
 	}
 
-	static Pair<Vec3d, Vec3d> p = null;
-	static int color;
+	static AxisAlignedBB p;
+	static Vec3i index;
 
 	@SubscribeEvent
 	public static void tick(ClientTickEvent event) {
@@ -167,40 +167,9 @@ public class ClientUtils {
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 				if (t instanceof TileIngots) {
-					double reach = mc.player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
-					Vec3d p1 = mc.player.getPositionEyes(0);
-					Vec3d look = mc.player.getLook(1);
-					Vec3d p2 = p1.add(look.scale(reach));
-					HashMap<Pair<Vec3d, Vec3d>, Pair<Integer, RayTraceResult>> hitMap = new HashMap<>();
-					List<Pair<Vec3d, Vec3d>> l = ((TileIngots) t).ingotPositions();
-					for (int i = 0; i < l.size(); i++) {
-						Pair<Vec3d, Vec3d> pp = l.get(i);
-						AxisAlignedBB aabb = new AxisAlignedBB(pp.getLeft(), pp.getRight()).offset(t.getPos());
-						RayTraceResult rtr2 = null;
-						if ((rtr2 = aabb.calculateIntercept(p1, p2)) != null) {
-							Vec3i v = TileIngots.coordMap.get(i);
-							hitMap.put(pp, Pair.of(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(v))), rtr2));
-						}
-					}
-					Pair<Vec3d, Vec3d> fin = null;
-					RayTraceResult r1 = null;
-					for (Map.Entry<Pair<Vec3d, Vec3d>, Pair<Integer, RayTraceResult>> e : hitMap.entrySet()) {
-						Pair<Vec3d, Vec3d> pp = e.getKey();
-						if (fin == null) {
-							fin = pp;
-							r1 = hitMap.get(pp).getRight();
-							continue;
-						}
-						RayTraceResult r2 = e.getValue().getRight();
-						Vec3d v1 = e.getValue().getRight().hitVec, v2 = r1.hitVec;
-						if (v1.distanceTo(p1) < v2.distanceTo(p1)) {
-							fin = pp;
-							r1 = r2;
-						}
-					}
-					p = fin;
-					if (p != null)
-						color = hitMap.get(p).getLeft();
+					Pair<Vec3i, AxisAlignedBB> pp = ((TileIngots) t).lookingPos(mc.player);
+					p = pp.getRight();
+					index = pp.getLeft();
 				}
 			}
 		}
@@ -248,7 +217,7 @@ public class ClientUtils {
 					if (!tile.changedClient && cachedQuads.containsKey(tile))
 						return cachedQuads.get(tile);
 					List<ItemStack> stacks = tile.ingotList();
-					List<AxisAlignedBB> aabbs = tile.io.ingotBoxes();
+					List<AxisAlignedBB> aabbs = tile.ingotBoxes();
 					int size = Math.min(stacks.size(), aabbs.size());
 					for (int i = 0; i < size; i++) {
 						ItemStack s = stacks.get(i);

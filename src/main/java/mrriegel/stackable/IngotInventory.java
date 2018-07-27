@@ -72,7 +72,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		}
 	}
 
-	int freeItems(ItemStack stack) {
+	private int freeItems(ItemStack stack) {
 		int max = Math.min(stack.getMaxStackSize(), Stackable.itemsPerIngot);
 		int free = 0;
 		int occuIngots = 0;
@@ -114,7 +114,6 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 
 	@Override
 	public void deserializeNBT(NBTTagCompound compound) {
-		inventory.clear();
 		NBTTagList list1 = compound.getTagList("list1", 10);
 		int[] list2 = compound.getIntArray("list2");
 		Validate.isTrue(list1.tagCount() == list2.length);
@@ -141,7 +140,6 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 
 	@Override
 	public ItemStack extractItem(int slot, int amount, boolean simulate) {
-		amount = Math.min(amount, Stackable.itemsPerIngot);
 		return extractItem(getStackInSlot(slot), amount, simulate);
 	}
 

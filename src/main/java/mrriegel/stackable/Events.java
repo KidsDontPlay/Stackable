@@ -22,11 +22,11 @@ public class Events {
 	public static void tick(WorldTickEvent event) {
 		if (event.phase == Phase.END && !event.world.isRemote && event.world.getTotalWorldTime() % 3 == 0) {
 			try {
-				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots).map(t -> (TileIngots) t).filter(t -> t.needSync && t.getWorld() == event.world).forEach(t -> {
+				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots).map(t -> (TileIngots) t).filter(t -> t.needSync).forEach(t -> {
 					t.markDirty();
+					t.needSync = false;
 					for (EntityPlayerMP player : event.world.getEntitiesWithinAABB(EntityPlayerMP.class, new AxisAlignedBB(t.getPos().add(-11, -11, -11), t.getPos().add(11, 11, 11)))) {
 						if (player.ticksExisted > 20) {
-							t.needSync = false;
 							Packet<?> p = t.getUpdatePacket();
 							if (p != null)
 								player.connection.sendPacket(p);
@@ -51,9 +51,10 @@ public class Events {
 			BlockPos newPos = event.getPos().offset(event.getFace());
 			if (player.world.isAirBlock(newPos)) {
 				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
-					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState());
+					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState(), 2);
 					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
 					t.isMaster = true;
+					player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
 					t.getBlockType().onBlockActivated(t.getWorld(), t.getPos(), t.getWorld().getBlockState(t.getPos()), player, event.getHand(), event.getFace(), 0, 0, 0);
 					//					player.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, ItemHandlerHelper.insertItemStacked(t.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null), event.getItemStack(), false));
 				}

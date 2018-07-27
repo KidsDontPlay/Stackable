@@ -2,7 +2,9 @@ package mrriegel.stackable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -12,6 +14,7 @@ import it.unimi.dsi.fastutil.Hash.Strategy;
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
@@ -20,6 +23,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.world.World;
@@ -61,9 +65,8 @@ public class TileIngots extends TileEntity {
 	public BlockPos masterPos;
 	public final IngotInventory inv = new IngotInventory(this);
 	public AxisAlignedBB box = null;
-	public List<Pair<Vec3d, Vec3d>> positions = null;
+	public List<AxisAlignedBB> positions = null;
 	public boolean changedClient = true;
-	public IngotObject io = new IngotObject(this);
 
 	@Override
 	public NBTTagCompound getUpdateTag() {
@@ -85,8 +88,10 @@ public class TileIngots extends TileEntity {
 	public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
 		NBTTagCompound tag = pkt.getNbtCompound();
 		readFromNBT(tag);
+	}
+
+	public void change() {
 		inv.items = null;
-		//		handler.items=null;
 		changedClient = true;
 		box = null;
 		positions = null;
@@ -98,16 +103,15 @@ public class TileIngots extends TileEntity {
 	public void readFromNBT(NBTTagCompound compound) {
 		NBTTagCompound n = compound.getCompoundTag("handler");
 		n.removeTag("Size");
-		//		handler.back.deserializeNBT(n);
 		isMaster = compound.getBoolean("isMaster");
 		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
 		inv.deserializeNBT(compound.getCompoundTag("inv"));
 		super.readFromNBT(compound);
+		change();
 	}
 
 	@Override
 	public NBTTagCompound writeToNBT(NBTTagCompound compound) {
-		//		compound.setTag("handler", handler.back.serializeNBT());
 		compound.setBoolean("isMaster", isMaster);
 		if (masterPos != null)
 			compound.setLong("master", masterPos.toLong());
@@ -123,7 +127,6 @@ public class TileIngots extends TileEntity {
 	@Override
 	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
 		if (isMaster && capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)
-			//			return (T) handler;
 			return (T) inv;
 		return super.getCapability(capability, facing);
 	}
@@ -150,7 +153,8 @@ public class TileIngots extends TileEntity {
 		return box = new AxisAlignedBB(0, 0, 0, 1, heigh * yy, 1);
 	}
 
-	public List<Pair<Vec3d, Vec3d>> ingotPositions() {
+	/** without offset */
+	public List<AxisAlignedBB> ingotBoxes() {
 		if (positions != null)
 			return positions;
 		List<ItemStack> ingotList = ingotList();
@@ -158,7 +162,7 @@ public class TileIngots extends TileEntity {
 		double xs = 1. / Stackable.perX, ys = 1. / Stackable.perY, zs = 1. / Stackable.perZ;
 		Vec3d vecSize = new Vec3d(xs, ys, zs);
 		Vec3d vecSizeI = new Vec3d(zs, ys, xs);
-		List<Pair<Vec3d, Vec3d>> lis = new ArrayList<>();
+		List<AxisAlignedBB> lis = new ArrayList<>();
 		for (int y = 0; y < Stackable.perY; y++) {
 			for (int z = 0; z < Stackable.perZ; z++) {
 				for (int x = 0; x < Stackable.perX; x++) {
@@ -167,8 +171,9 @@ public class TileIngots extends TileEntity {
 						break;
 					boolean uneven = y % 2 == 0;
 					Vec3d v = new Vec3d(uneven ? x * xs : z * zs, y * ys, uneven ? z * zs : x * xs);
-					Pair<Vec3d, Vec3d> p = Pair.of(v, v.add(uneven ? vecSize : vecSizeI));
-					lis.add(p);
+					Vec3d vv = v.add(uneven ? vecSize : vecSizeI);
+					AxisAlignedBB a = new AxisAlignedBB(v.x, v.y, v.z, vv.x, vv.y, vv.z);
+					lis.add(a);
 					count++;
 				}
 			}
@@ -197,6 +202,50 @@ public class TileIngots extends TileEntity {
 			ingotList.add(ItemStack.EMPTY);
 		return ingotList;
 
+	}
+
+	public ItemStack lookingStack(EntityPlayer player) {
+		Vec3i v = lookingPos(player).getLeft();
+		if (v == null)
+			return ItemStack.EMPTY;
+		return ingotList().get(TileIngots.coordMap.inverse().get(v));
+	}
+
+	public Pair<Vec3i, AxisAlignedBB> lookingPos(EntityPlayer player) {
+		double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
+		Vec3d p1 = player.getPositionEyes(1);
+		Vec3d look = player.getLook(1);
+		Vec3d p2 = p1.add(look.scale(reach));
+		HashMap<AxisAlignedBB, Pair<Integer, RayTraceResult>> hitMap = new HashMap<>();
+		List<AxisAlignedBB> l = ingotBoxes();
+		for (int i = 0; i < l.size(); i++) {
+			AxisAlignedBB pp = l.get(i);
+			AxisAlignedBB aabb = pp.offset(pos);
+			RayTraceResult rtr2 = null;
+			if ((rtr2 = aabb.calculateIntercept(p1, p2)) != null) {
+				hitMap.put(pp, Pair.of(i, rtr2));
+			}
+		}
+		if (hitMap.isEmpty())
+			return Pair.of(null, null);
+		AxisAlignedBB fin = null;
+		RayTraceResult r1 = null;
+		for (Map.Entry<AxisAlignedBB, Pair<Integer, RayTraceResult>> e : hitMap.entrySet()) {
+			AxisAlignedBB pp = e.getKey();
+			if (fin == null) {
+				fin = pp;
+				r1 = hitMap.get(pp).getRight();
+				continue;
+			}
+			RayTraceResult r2 = e.getValue().getRight();
+			Vec3d v1 = e.getValue().getRight().hitVec, v2 = r1.hitVec;
+			if (v1.distanceTo(p1) < v2.distanceTo(p1)) {
+				fin = pp;
+				r1 = r2;
+			}
+		}
+		//		AxisAlignedBB aabb = new AxisAlignedBB(fin.getLeft().x, fin.getLeft().y, fin.getLeft().z, fin.getRight().x, fin.getRight().y, fin.getRight().z);
+		return Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
 	}
 
 }
