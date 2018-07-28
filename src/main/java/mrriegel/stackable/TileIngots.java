@@ -16,7 +16,10 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
+import net.minecraft.nbt.NBTTagLong;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
@@ -63,9 +66,12 @@ public class TileIngots extends TileEntity {
 	public boolean needSync = true;
 	public boolean isMaster;
 	public BlockPos masterPos;
+	public List<BlockPos> slaves = new ArrayList<>();
 	public final IngotInventory inv = new IngotInventory(this);
 	public AxisAlignedBB box = null;
 	public List<AxisAlignedBB> positions = null;
+	public List<ItemStack> ingots = null;
+	public Pair<Vec3i, AxisAlignedBB> raytrace;
 	public boolean changedClient = true;
 
 	@Override
@@ -95,17 +101,21 @@ public class TileIngots extends TileEntity {
 		changedClient = true;
 		box = null;
 		positions = null;
+		ingots = null;
+		raytrace = null;
 		if (world != null)
 			world.markBlockRangeForRenderUpdate(pos, pos);
 	}
 
 	@Override
 	public void readFromNBT(NBTTagCompound compound) {
-		NBTTagCompound n = compound.getCompoundTag("handler");
-		n.removeTag("Size");
 		isMaster = compound.getBoolean("isMaster");
 		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
 		inv.deserializeNBT(compound.getCompoundTag("inv"));
+		slaves.clear();
+		NBTTagList pl = compound.getTagList("slaves", 4);
+		for (NBTBase b : pl)
+			slaves.add(BlockPos.fromLong(((NBTTagLong) b).getLong()));
 		super.readFromNBT(compound);
 		change();
 	}
@@ -116,6 +126,10 @@ public class TileIngots extends TileEntity {
 		if (masterPos != null)
 			compound.setLong("master", masterPos.toLong());
 		compound.setTag("inv", inv.serializeNBT());
+		NBTTagList pl = new NBTTagList();
+		for (BlockPos p : slaves)
+			pl.appendTag(new NBTTagLong(p.toLong()));
+		compound.setTag("slaves", pl);
 		return super.writeToNBT(compound);
 	}
 
@@ -182,6 +196,8 @@ public class TileIngots extends TileEntity {
 	}
 
 	public List<ItemStack> ingotList() {
+		if (ingots != null)
+			return ingots;
 		List<ItemStack> ingotList = new ArrayList<>();
 		for (Object2IntMap.Entry<ItemStack> e : inv.inventory.object2IntEntrySet()) {
 			int max = Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot);
@@ -200,7 +216,7 @@ public class TileIngots extends TileEntity {
 			ingotList.remove(ingotList.size() - 1);
 		while (ingotList.size() < maxIngotAmount)
 			ingotList.add(ItemStack.EMPTY);
-		return ingotList;
+		return ingots = ingotList;
 
 	}
 
@@ -211,11 +227,17 @@ public class TileIngots extends TileEntity {
 		return ingotList().get(TileIngots.coordMap.inverse().get(v));
 	}
 
+	private Vec3d eye, front;
+
 	public Pair<Vec3i, AxisAlignedBB> lookingPos(EntityPlayer player) {
 		double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
 		Vec3d p1 = player.getPositionEyes(1);
 		Vec3d look = player.getLook(1);
 		Vec3d p2 = p1.add(look.scale(reach));
+		if (p1.equals(eye) && p2.equals(front) && raytrace != null)
+			return raytrace;
+		eye = p1;
+		front = p2;
 		HashMap<AxisAlignedBB, Pair<Integer, RayTraceResult>> hitMap = new HashMap<>();
 		List<AxisAlignedBB> l = ingotBoxes();
 		for (int i = 0; i < l.size(); i++) {
@@ -227,7 +249,7 @@ public class TileIngots extends TileEntity {
 			}
 		}
 		if (hitMap.isEmpty())
-			return Pair.of(null, null);
+			return raytrace = Pair.of(null, null);
 		AxisAlignedBB fin = null;
 		RayTraceResult r1 = null;
 		for (Map.Entry<AxisAlignedBB, Pair<Integer, RayTraceResult>> e : hitMap.entrySet()) {
@@ -244,8 +266,7 @@ public class TileIngots extends TileEntity {
 				r1 = r2;
 			}
 		}
-		//		AxisAlignedBB aabb = new AxisAlignedBB(fin.getLeft().x, fin.getLeft().y, fin.getLeft().z, fin.getRight().x, fin.getRight().y, fin.getRight().z);
-		return Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
+		return raytrace = Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
 	}
 
 }

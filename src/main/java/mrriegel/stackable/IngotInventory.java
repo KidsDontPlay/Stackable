@@ -63,6 +63,8 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		tile.markDirty();
 		tile.box = null;
 		tile.positions = null;
+		tile.ingots = null;
+		tile.raytrace = null;
 		if (!threadStarted) {
 			threadStarted = true;
 			new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> {

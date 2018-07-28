@@ -2,12 +2,9 @@ package mrriegel.stackable;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -22,35 +19,35 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.IBakedModel;
-import net.minecraft.client.renderer.block.model.ItemOverrideList;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
-import net.minecraftforge.common.property.IExtendedBlockState;
+import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.oredict.OreDictionary;
 
@@ -59,9 +56,10 @@ public class ClientUtils {
 
 	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileIngots.strategy);
 	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileIngots.strategy);
-	private static final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
+	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
+	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
-	private static TextureAtlasSprite defaultTas;
+	static TextureAtlasSprite defaultTas;
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
@@ -122,12 +120,17 @@ public class ClientUtils {
 		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
 	}
 
+	//	private static Cache<TileIngots, Pair<Vec3i, AxisAlignedBB>> rayCache = CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(50, TimeUnit.MILLISECONDS).build();
+
 	@SubscribeEvent
-	public static void draw(DrawBlockHighlightEvent event) {
+	public static void draw(DrawBlockHighlightEvent event) throws ExecutionException {
 		RayTraceResult rtr = event.getTarget();
 		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 			if (t instanceof TileIngots) {
+				ItemStack h = mc.player.getHeldItemMainhand();
+				if (!h.getItem().getToolClasses(h).isEmpty())
+					return;
 				GlStateManager.enableBlend();
 				GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 				GlStateManager.glLineWidth(2.5F);
@@ -138,8 +141,10 @@ public class ClientUtils {
 				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * (double) partialTicks;
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * (double) partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * (double) partialTicks;
-				if (p != null) {
-					Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(index))));
+				//				Pair<Vec3i, AxisAlignedBB> p = rayCache.get((TileIngots) t, () -> ((TileIngots) t).lookingPos(mc.player));
+				Pair<Vec3i, AxisAlignedBB> p = ((TileIngots) t).lookingPos(mc.player);
+				if (p.getRight() != null) {
+					Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(p.getLeft()))));
 					float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
 					float f1, f2, f3;
 					if (hsb[2] < .5)
@@ -147,7 +152,8 @@ public class ClientUtils {
 					else
 						f1 = f2 = f3 = 0f;
 					//					f1 = f2 = f3 = 1f;
-					RenderGlobal.drawSelectionBoundingBox(p.offset(t.getPos()).grow(-0.0040000000949949026D).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
+					double grow = Math.sin((mc.world.getTotalWorldTime() + event.getPartialTicks()) / 3) * .003;
+					RenderGlobal.drawSelectionBoundingBox(p.getRight().offset(t.getPos()).grow(grow).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
 					event.setCanceled(true);
 				}
 				GlStateManager.depthMask(true);
@@ -157,19 +163,32 @@ public class ClientUtils {
 		}
 	}
 
-	static AxisAlignedBB p;
-	static Vec3i index;
-
 	@SubscribeEvent
-	public static void tick(ClientTickEvent event) {
-		if (mc != null && mc.player != null && !mc.isGamePaused()) {
+	public static void renderText(RenderGameOverlayEvent.Post event) {
+		if (event.getType() == ElementType.ALL) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 				if (t instanceof TileIngots) {
-					Pair<Vec3i, AxisAlignedBB> pp = ((TileIngots) t).lookingPos(mc.player);
-					p = pp.getRight();
-					index = pp.getLeft();
+					ItemStack h = mc.player.getHeldItemMainhand();
+					if (!h.getItem().getToolClasses(h).isEmpty())
+						return;
+					ItemStack s = ((TileIngots) t).lookingStack(mc.player);
+					if (!s.isEmpty()) {
+						ScaledResolution sr = event.getResolution();
+						String text = s.getDisplayName();
+						int textWidth = mc.fontRenderer.getStringWidth(text);
+						int x = sr.getScaledWidth() / 2 - textWidth / 2, y = sr.getScaledHeight() / 2 + mc.fontRenderer.FONT_HEIGHT + 5;
+						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, mc.player.isSneaking() || true ? 0 : 0x66000000, true);
+						GlStateManager.color(1, 1, 1, 1);
+						mc.getTextureManager().bindTexture(BACKGROUND_TEX);
+						GuiUtils.drawContinuousTexturedBox(x + textWidth + 2, y - 5, 0, 0, 24, 24, 248, 166, 4, 0);
+						mc.getTextureManager().bindTexture(SLOT_TEX);
+						GuiUtils.drawTexturedModalRect(x + textWidth + 5, y - 2, 12, 12, 18, 18, 0);
+						RenderHelper.enableGUIStandardItemLighting();
+						mc.getRenderItem().renderItemAndEffectIntoGUI(s, x + textWidth + 6, y - 1);
+						RenderHelper.disableStandardItemLighting();
+					}
 				}
 			}
 		}
@@ -183,66 +202,10 @@ public class ClientUtils {
 	@SubscribeEvent
 	public static void bake(ModelBakeEvent event) {
 		mc = Minecraft.getMinecraft();
-		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IBakedModel() {
-
-			@Override
-			public boolean isGui3d() {
-				return true;
-			}
-
-			@Override
-			public boolean isBuiltInRenderer() {
-				return false;
-			}
-
-			@Override
-			public boolean isAmbientOcclusion() {
-				return true;
-			}
-
-			@Override
-			public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
-				if (side != null)
-					return Collections.emptyList();
-				StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
-				if ("getDamageModel".equals(ste.getMethodName())) {
-					IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();
-					IBakedModel m = mc.getBlockRendererDispatcher().getModelForState(cobble);
-					return m.getQuads(cobble, side, rand);
-				}
-				TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
-				List<BakedQuad> quads = new ArrayList<>();
-				if (tile != null) {
-					//					cachedQuads.clear();
-					if (!tile.changedClient && cachedQuads.containsKey(tile))
-						return cachedQuads.get(tile);
-					List<ItemStack> stacks = tile.ingotList();
-					List<AxisAlignedBB> aabbs = tile.ingotBoxes();
-					int size = Math.min(stacks.size(), aabbs.size());
-					for (int i = 0; i < size; i++) {
-						ItemStack s = stacks.get(i);
-						createIngot(quads, s, aabbs.get(i), Stackable.useBlockTexture ? sprite(s) : null);
-					}
-					tile.changedClient = false;
-					cachedQuads.put(tile, quads);
-				}
-				return quads;
-			}
-
-			@Override
-			public TextureAtlasSprite getParticleTexture() {
-				return defaultTas;
-			}
-
-			@Override
-			public ItemOverrideList getOverrides() {
-				return ItemOverrideList.NONE;
-			}
-
-		});
+		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotModel());
 	}
 
-	private static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {
+	static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {
 		float r = 1f, g = 1f, b = 1f;
 		if (tas == null) {
 			tas = defaultTas;
@@ -352,4 +315,5 @@ public class ClientUtils {
 			}
 		}
 	}
+
 }

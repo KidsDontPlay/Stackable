@@ -1,0 +1,99 @@
+package mrriegel.stackable;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.stream.Collectors;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.renderer.block.model.ItemOverrideList;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraftforge.common.property.IExtendedBlockState;
+
+public class IngotModel implements IBakedModel {
+
+	private static final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
+	private List<BakedQuad> brokenQuads;
+	private List<BakedQuad> fallBack;
+
+	@Override
+	public boolean isGui3d() {
+		return true;
+	}
+
+	@Override
+	public boolean isBuiltInRenderer() {
+		return false;
+	}
+
+	@Override
+	public boolean isAmbientOcclusion() {
+		return true;
+	}
+
+	@Override
+	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
+		if (side != null)
+			return Collections.emptyList();
+		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
+		if ("getDamageModel".equals(ste.getMethodName())) {
+			if (brokenQuads != null)
+				return brokenQuads;
+			IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();
+			IBakedModel m = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(cobble);
+			return brokenQuads = Arrays.stream(EnumFacing.VALUES).flatMap(f -> m.getQuads(cobble, f, 0).stream()).collect(Collectors.toList());
+		}
+		TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
+		List<BakedQuad> quads = new ArrayList<>();
+		if (tile != null) {
+			//						cachedQuads.clear();
+			if (!tile.changedClient && cachedQuads.containsKey(tile))
+				return cachedQuads.get(tile);
+			List<ItemStack> stacks = tile.ingotList();
+			List<AxisAlignedBB> aabbs = tile.ingotBoxes();
+			int size = Math.min(stacks.size(), aabbs.size());
+			for (int i = 0; i < size; i++) {
+				ItemStack s = stacks.get(i);
+				ClientUtils.createIngot(quads, s, aabbs.get(i), Stackable.useBlockTexture ? ClientUtils.sprite(s) : null);
+			}
+			tile.changedClient = false;
+			cachedQuads.put(tile, quads);
+		} else {
+			if (fallBack == null) {
+				fallBack = new ArrayList<>();
+				Block[] blocks = new Block[] { Blocks.PURPUR_BLOCK, Blocks.BEDROCK, Blocks.CLAY, Blocks.PACKED_ICE, Blocks.MOSSY_COBBLESTONE, Blocks.LAPIS_BLOCK };
+				for (int i = 0; i < 6; i++) {
+					IBlockState ss = blocks[i].getDefaultState();
+					IBakedModel m = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(ss);
+					List<BakedQuad> qs = m.getQuads(ss, EnumFacing.VALUES[i], rand);
+					if (!qs.isEmpty())
+						fallBack.add(qs.get(0));
+				}
+			}
+			quads.addAll(fallBack);
+
+		}
+		return quads;
+	}
+
+	@Override
+	public TextureAtlasSprite getParticleTexture() {
+		return ClientUtils.defaultTas;
+	}
+
+	@Override
+	public ItemOverrideList getOverrides() {
+		return ItemOverrideList.NONE;
+	}
+}

@@ -1,5 +1,7 @@
 package mrriegel.stackable;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 import net.minecraft.block.Block;
@@ -7,6 +9,7 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
@@ -53,7 +56,6 @@ public class BlockIngots extends Block {
 		setRegistryName("ingots");
 		setUnlocalizedName(getRegistryName().toString());
 		setHardness(6f);
-		//		setDefaultState(((IExtendedBlockState) getDefaultState()).withProperty(prop, null));
 	}
 
 	@Override
@@ -73,6 +75,16 @@ public class BlockIngots extends Block {
 			return ((TileIngots) t).getBox();
 		} else
 			return FULL_BLOCK_AABB;
+	}
+
+	@Override
+	public void addCollisionBoxToList(IBlockState state, World worldIn, BlockPos pos, AxisAlignedBB entityBox, List<AxisAlignedBB> collidingBoxes, Entity entityIn, boolean isActualState) {
+		TileEntity t = worldIn.getTileEntity(pos);
+		if (t instanceof TileIngots) {
+			for (AxisAlignedBB aabb : ((TileIngots) t).ingotBoxes())
+				addCollisionBoxToList(pos, entityBox, collidingBoxes, aabb);
+		} else
+			super.addCollisionBoxToList(state, worldIn, pos, entityBox, collidingBoxes, entityIn, isActualState);
 	}
 
 	@Override
@@ -123,41 +135,18 @@ public class BlockIngots extends Block {
 	}
 
 	@Override
-	public void onBlockClicked(World worldIn, BlockPos pos, EntityPlayer playerIn) {
-		TileEntity t;
-		if (worldIn.isRemote || !((t = worldIn.getTileEntity(pos)) instanceof TileIngots) || playerIn.getHeldItemMainhand().getItem() instanceof ItemTool)
-			return;
-		//		RayTraceResult rtr = playerIn.rayTrace(playerIn.getAttributeMap().getAttributeInstance(EntityPlayer.REACH_DISTANCE).getAttributeValue(), 0);
-		//		if (rtr == null)
-		//			return;
-		ItemStack target = ((TileIngots) t).lookingStack(playerIn);
-		if (target.isEmpty())
-			return;
-		ItemStack s = ((TileIngots) t).inv.extractItem(target, playerIn.isSneaking() ? 64 : 1, false);
-		if (!s.isEmpty()) {
-			Vec3d point = playerIn.getPositionEyes(1F).add(playerIn.getLookVec().scale(1.5));
-			EntityItem ei = new EntityItem(worldIn, point.x, point.y, point.z, s);
-			ei.setPosition(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-			worldIn.spawnEntity(ei);
-			ei.onCollideWithPlayer(playerIn);
-		}
-	}
-
-	@Override
-	public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest) {
-		if (player.capabilities.isCreativeMode && !(player.getHeldItemMainhand().getItem() instanceof ItemTool)) {
-			onBlockClicked(world, pos, player);
-			return false;
-		}
-		return super.removedByPlayer(state, world, pos, player, willHarvest);
-	}
-
-	@Override
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (t instanceof TileIngots) {
-			IntStream.range(0, ((TileIngots) t).inv.getSlots()).mapToObj(i -> ((TileIngots) t).inv.getStackInSlot(i)).//
-					forEach(s -> spawnAsEntity(worldIn, pos, s));
+			TileIngots tile = (TileIngots) t;
+			if (tile.isMaster) {
+				IntStream.range(0, tile.inv.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, tile.inv.getStackInSlot(i)));
+				tile.slaves.stream().filter(p -> worldIn.getTileEntity(p) instanceof TileIngots).forEach(p -> worldIn.destroyBlock(p, false));
+			} else {
+				if (tile.masterPos != null && (t = worldIn.getTileEntity(tile.masterPos)) instanceof TileIngots) {
+					((TileIngots) t).slaves.remove(tile.getPos());
+				}
+			}
 		}
 		worldIn.removeTileEntity(pos);
 	}
