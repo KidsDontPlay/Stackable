@@ -118,6 +118,7 @@ public class ClientUtils {
 
 	public static void init() {
 		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
+		IngotModel.init();
 	}
 
 	//	private static Cache<TileIngots, Pair<Vec3i, AxisAlignedBB>> rayCache = CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(50, TimeUnit.MILLISECONDS).build();

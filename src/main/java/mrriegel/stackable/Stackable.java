@@ -62,6 +62,7 @@ public class Stackable {
 		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", Configuration.CATEGORY_GENERAL, new String[] {}, "Items that are allowed to be added to the ingot block as well.")).map(ResourceLocation::new).collect(Collectors.toSet());
 		if (config.hasChanged())
 			config.save();
+		generateConstants();
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
 	}
@@ -75,7 +76,6 @@ public class Stackable {
 
 	@Mod.EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
-		generateConstants();
 	}
 
 	@SubscribeEvent
@@ -95,7 +95,6 @@ public class Stackable {
 			p.nbt.setInteger("y", Stackable.perY);
 			p.nbt.setInteger("z", Stackable.perZ);
 			snw.sendTo(p, (EntityPlayerMP) event.getEntity());
-			//			generateConstants();
 		}
 	}
 

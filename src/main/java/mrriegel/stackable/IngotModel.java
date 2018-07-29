@@ -24,8 +24,22 @@ import net.minecraftforge.common.property.IExtendedBlockState;
 public class IngotModel implements IBakedModel {
 
 	private static final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
-	private List<BakedQuad> brokenQuads;
-	private List<BakedQuad> fallBack;
+	private static List<BakedQuad> brokenQuads, fallBack;
+
+	public static void init() {
+		IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();
+		IBakedModel m = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(cobble);
+		brokenQuads = Arrays.stream(EnumFacing.VALUES).flatMap(f -> m.getQuads(cobble, f, 0).stream()).collect(Collectors.toList());
+		fallBack = new ArrayList<>();
+		Block[] blocks = new Block[] { Blocks.PURPUR_BLOCK, Blocks.BEDROCK, Blocks.CLAY, Blocks.PACKED_ICE, Blocks.MOSSY_COBBLESTONE, Blocks.LAPIS_BLOCK };
+		for (int i = 0; i < 6; i++) {
+			IBlockState ss = blocks[i].getDefaultState();
+			IBakedModel mm = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(ss);
+			List<BakedQuad> qs = mm.getQuads(ss, EnumFacing.VALUES[i], 0);
+			if (!qs.isEmpty())
+				fallBack.add(qs.get(0));
+		}
+	}
 
 	@Override
 	public boolean isGui3d() {
@@ -48,11 +62,7 @@ public class IngotModel implements IBakedModel {
 			return Collections.emptyList();
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
 		if ("getDamageModel".equals(ste.getMethodName())) {
-			if (brokenQuads != null)
-				return brokenQuads;
-			IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();
-			IBakedModel m = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(cobble);
-			return brokenQuads = Arrays.stream(EnumFacing.VALUES).flatMap(f -> m.getQuads(cobble, f, 0).stream()).collect(Collectors.toList());
+			return brokenQuads;
 		}
 		TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
 		List<BakedQuad> quads = new ArrayList<>();
@@ -70,17 +80,6 @@ public class IngotModel implements IBakedModel {
 			tile.changedClient = false;
 			cachedQuads.put(tile, quads);
 		} else {
-			if (fallBack == null) {
-				fallBack = new ArrayList<>();
-				Block[] blocks = new Block[] { Blocks.PURPUR_BLOCK, Blocks.BEDROCK, Blocks.CLAY, Blocks.PACKED_ICE, Blocks.MOSSY_COBBLESTONE, Blocks.LAPIS_BLOCK };
-				for (int i = 0; i < 6; i++) {
-					IBlockState ss = blocks[i].getDefaultState();
-					IBakedModel m = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(ss);
-					List<BakedQuad> qs = m.getQuads(ss, EnumFacing.VALUES[i], rand);
-					if (!qs.isEmpty())
-						fallBack.add(qs.get(0));
-				}
-			}
 			quads.addAll(fallBack);
 
 		}
@@ -96,4 +95,5 @@ public class IngotModel implements IBakedModel {
 	public ItemOverrideList getOverrides() {
 		return ItemOverrideList.NONE;
 	}
+
 }

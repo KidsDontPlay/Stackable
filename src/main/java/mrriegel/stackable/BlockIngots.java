@@ -1,7 +1,6 @@
 package mrriegel.stackable;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.IntStream;
 
 import net.minecraft.block.Block;
@@ -10,17 +9,14 @@ import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemTool;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.property.ExtendedBlockState;
@@ -114,7 +110,8 @@ public class BlockIngots extends Block {
 
 	@Override
 	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos) {
-		if (worldIn.isAirBlock(pos.down()))
+		TileEntity t = worldIn.getTileEntity(pos);
+		if (worldIn.isAirBlock(pos.down()) && t instanceof TileIngots && !((TileIngots) t).isMaster)
 			worldIn.destroyBlock(pos, false);
 	}
 
@@ -125,7 +122,7 @@ public class BlockIngots extends Block {
 		} else {
 			TileEntity tile = worldIn.getTileEntity(pos);
 			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
-				ItemStack rest = ((TileIngots) tile).inv.insertItem(playerIn.getHeldItem(hand), false);
+				ItemStack rest = ((TileIngots) tile).getMaster().inv.insertItem(playerIn.getHeldItem(hand), false);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
@@ -141,11 +138,11 @@ public class BlockIngots extends Block {
 			TileIngots tile = (TileIngots) t;
 			if (tile.isMaster) {
 				IntStream.range(0, tile.inv.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, tile.inv.getStackInSlot(i)));
-				tile.slaves.stream().filter(p -> worldIn.getTileEntity(p) instanceof TileIngots).forEach(p -> worldIn.destroyBlock(p, false));
+				worldIn.removeTileEntity(pos);
 			} else {
-				if (tile.masterPos != null && (t = worldIn.getTileEntity(tile.masterPos)) instanceof TileIngots) {
-					((TileIngots) t).slaves.remove(tile.getPos());
-				}
+				for(ItemStack s:tile.ingotList())
+					spawnAsEntity(worldIn, pos, tile.getMaster().inv.extractItem(s, 64, false));
+				worldIn.removeTileEntity(pos);
 			}
 		}
 		worldIn.removeTileEntity(pos);

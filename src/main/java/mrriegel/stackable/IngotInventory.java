@@ -49,8 +49,28 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		if (!TileIngots.validItem(stack))
 			return stack;
 		int canInsert = freeItems(stack);
+		boolean noSpace = false;
+		while (canInsert <= 0 && !noSpace) {
+			List<TileIngots> l = tile.getAllIngotBlocks();
+			TileIngots last = l.get(l.size() - 1);
+			if (tile.getWorld().isAirBlock(last.getPos().up())) {
+				tile.getWorld().setBlockState(last.getPos().up(), Stackable.ingots.getDefaultState());
+				TileIngots n=(TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
+				n.masterPos=tile.getPos();
+				canInsert=freeItems(stack);
+			} else
+				noSpace = true;
+		}
+		int insert = 0;
 		if (!simulate && canInsert > 0) {
-			inventory.addTo(stack, Math.min(stack.getCount(), canInsert));
+			inventory.addTo(stack, insert = Math.min(stack.getCount(), canInsert));
+			if (insert < stack.getCount()) {
+				int diff = stack.getCount() - insert;
+				//				while (diff > 0) {
+				//
+				//				}
+
+			}
 			onChange();
 		}
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
@@ -59,12 +79,14 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	private void onChange() {
 		if (tile.getWorld().isRemote)
 			return;
-		tile.needSync = true;
-		tile.markDirty();
-		tile.box = null;
-		tile.positions = null;
-		tile.ingots = null;
-		tile.raytrace = null;
+		for (TileIngots t : tile.getAllIngotBlocks()) {
+			t.needSync = true;
+			t.markDirty();
+			t.box = null;
+			t.positions = null;
+			t.ingots = null;
+			t.raytrace = null;
+		}
 		if (!threadStarted) {
 			threadStarted = true;
 			new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> {
@@ -87,7 +109,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 						value -= max;
 					} else {
 						occuIngots++;
-						free = e.getIntValue() % max;
+						free = value % max;
 						break;
 					}
 				}
@@ -95,7 +117,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 				occuIngots += Math.ceil(e.getIntValue() / (double) (Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot)));
 			}
 		}
-		int freeIngots = TileIngots.maxIngotAmount - occuIngots;
+		int freeIngots = TileIngots.maxIngotAmount * (tile.getAllIngotBlocks().size()) - occuIngots;
 		free += max * freeIngots;
 		return free;
 	}

@@ -31,11 +31,11 @@ public class Events {
 	public static void tick(WorldTickEvent event) {
 		if (event.phase == Phase.END && !event.world.isRemote && event.world.getTotalWorldTime() % 3 == 0) {
 			try {
-				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots && ((TileIngots) t).needSync).map(t -> (TileIngots) t).forEach(t -> {
+				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots && ((TileIngots) t).needSync).forEach(t -> {
 					t.markDirty();
-					t.needSync = false;
+					((TileIngots) t).needSync = false;
 					for (EntityPlayerMP player : event.world.getEntitiesWithinAABB(EntityPlayerMP.class, new AxisAlignedBB(t.getPos().add(-11, -11, -11), t.getPos().add(11, 11, 11)))) {
-						if (player.ticksExisted > 20||true) {
+						if (player.ticksExisted > 20 || true) {
 							Packet<?> p = t.getUpdatePacket();
 							if (p != null)
 								player.connection.sendPacket(p);
@@ -68,7 +68,7 @@ public class Events {
 					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
 					t.isMaster = true;
 					player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
-					Stackable.ingots.onBlockActivated(t.getWorld(), t.getPos(), t.getWorld().getBlockState(t.getPos()), player, event.getHand(), event.getFace(), 0, 0, 0);
+					Stackable.ingots.onBlockActivated(player.world, newPos, Stackable.ingots.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
 					placed.add(player.getUniqueID());
 				}
 				event.setUseBlock(Result.DENY);
@@ -93,7 +93,7 @@ public class Events {
 			ItemStack target = ((TileIngots) t).lookingStack(player);
 			if (target.isEmpty())
 				return;
-			ItemStack s = ((TileIngots) t).inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
+			ItemStack s = ((TileIngots) t).getMaster().inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
 			if (!s.isEmpty()) {
 				Vec3d point = player.getPositionEyes(1F).add(player.getLookVec().scale(1.5));
 				EntityItem ei = new EntityItem(t.getWorld(), point.x, point.y, point.z, s);

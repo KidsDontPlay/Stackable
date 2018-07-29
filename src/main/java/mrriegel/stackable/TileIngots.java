@@ -2,6 +2,7 @@ package mrriegel.stackable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +17,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.nbt.NBTTagList;
-import net.minecraft.nbt.NBTTagLong;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
@@ -66,8 +64,8 @@ public class TileIngots extends TileEntity {
 	public boolean needSync = true;
 	public boolean isMaster;
 	public BlockPos masterPos;
-	public List<BlockPos> slaves = new ArrayList<>();
-	public final IngotInventory inv = new IngotInventory(this);
+	public IngotInventory inv = new IngotInventory(this);
+	//cache
 	public AxisAlignedBB box = null;
 	public List<AxisAlignedBB> positions = null;
 	public List<ItemStack> ingots = null;
@@ -97,26 +95,29 @@ public class TileIngots extends TileEntity {
 	}
 
 	public void change() {
-		inv.items = null;
-		changedClient = true;
-		box = null;
-		positions = null;
-		ingots = null;
-		raytrace = null;
-		if (world != null)
-			world.markBlockRangeForRenderUpdate(pos, pos);
+		if (world == null)
+			return;
+		for (TileIngots t : getAllIngotBlocks()) {
+			if (t.inv != null)
+				t.inv.items = null;
+			t.changedClient = true;
+			t.box = null;
+			t.positions = null;
+			t.ingots = null;
+			t.raytrace = null;
+			t.world.markBlockRangeForRenderUpdate(t.pos, t.pos);
+		}
 	}
 
 	@Override
 	public void readFromNBT(NBTTagCompound compound) {
 		isMaster = compound.getBoolean("isMaster");
 		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
-		inv.deserializeNBT(compound.getCompoundTag("inv"));
-		slaves.clear();
-		NBTTagList pl = compound.getTagList("slaves", 4);
-		for (NBTBase b : pl)
-			slaves.add(BlockPos.fromLong(((NBTTagLong) b).getLong()));
+		if (inv != null)
+			inv.deserializeNBT(compound.getCompoundTag("inv"));
 		super.readFromNBT(compound);
+		if (!isMaster && inv != null)
+			inv = null;
 		change();
 	}
 
@@ -125,11 +126,8 @@ public class TileIngots extends TileEntity {
 		compound.setBoolean("isMaster", isMaster);
 		if (masterPos != null)
 			compound.setLong("master", masterPos.toLong());
-		compound.setTag("inv", inv.serializeNBT());
-		NBTTagList pl = new NBTTagList();
-		for (BlockPos p : slaves)
-			pl.appendTag(new NBTTagLong(p.toLong()));
-		compound.setTag("slaves", pl);
+		if (inv != null)
+			compound.setTag("inv", inv.serializeNBT());
 		return super.writeToNBT(compound);
 	}
 
@@ -145,26 +143,47 @@ public class TileIngots extends TileEntity {
 		return super.getCapability(capability, facing);
 	}
 
+	public List<TileIngots> getAllIngotBlocks() {
+		List<TileIngots> l = new ArrayList<>();
+		TileIngots master = getMaster();
+		l.add(master);
+		BlockPos p = master.pos;
+		while (true) {
+			p = p.up();
+			if (p.equals(pos)) {
+				l.add(this);
+				continue;
+			}
+			TileEntity t = world.getTileEntity(p);
+			if (t instanceof TileIngots) {
+				TileIngots tile = (TileIngots) t;
+				if (!tile.isMaster && master.getPos().equals(tile.masterPos))
+					l.add(tile);
+				else
+					break;
+			} else
+				break;
+		}
+		return l;
+	}
+
+	public int getLevel() {
+		return pos.getY() - getMaster().pos.getY();
+	}
+
+	public TileIngots getMaster() {
+		if (isMaster)
+			return this;
+		return masterPos == null ? null : (TileIngots) world.getTileEntity(masterPos);
+	}
+
 	public AxisAlignedBB getBox() {
 		if (box != null)
 			return box;
-		List<ItemStack> ingotList = ingotList();
-		double yy = 1d / Stackable.perY;
-		int count = 0;
-		boolean an = false;
-		for (int i = 0; i < ingotList.size(); i++) {
-			if (ingotList.get(i).isEmpty()) {
-				count = i;
-				an = true;
-				break;
-			}
-		}
-		if (!an)
-			count = ingotList.size();
-		int heigh = (int) Math.ceil((double) count / (Stackable.perX * Stackable.perZ));
-		if (heigh == 0)
-			heigh = 1;
-		return box = new AxisAlignedBB(0, 0, 0, 1, heigh * yy, 1);
+		AxisAlignedBB aabb = new AxisAlignedBB(0, 0, 0, 1, 1 / 16, 1);
+		for (AxisAlignedBB ab : ingotBoxes())
+			aabb = aabb.union(ab);
+		return box = aabb;
 	}
 
 	/** without offset */
@@ -172,6 +191,8 @@ public class TileIngots extends TileEntity {
 		if (positions != null)
 			return positions;
 		List<ItemStack> ingotList = ingotList();
+		if (ingotList.isEmpty())
+			return Collections.emptyList();
 		int count = 0;
 		double xs = 1. / Stackable.perX, ys = 1. / Stackable.perY, zs = 1. / Stackable.perZ;
 		Vec3d vecSize = new Vec3d(xs, ys, zs);
@@ -183,9 +204,9 @@ public class TileIngots extends TileEntity {
 					ItemStack s = ingotList.get(count);
 					if (s.isEmpty())
 						break;
-					boolean uneven = y % 2 == 0;
-					Vec3d v = new Vec3d(uneven ? x * xs : z * zs, y * ys, uneven ? z * zs : x * xs);
-					Vec3d vv = v.add(uneven ? vecSize : vecSizeI);
+					boolean even = y % 2 == 0;
+					Vec3d v = new Vec3d(even ? x * xs : z * zs, y * ys, even ? z * zs : x * xs);
+					Vec3d vv = v.add(even ? vecSize : vecSizeI);
 					AxisAlignedBB a = new AxisAlignedBB(v.x, v.y, v.z, vv.x, vv.y, vv.z);
 					lis.add(a);
 					count++;
@@ -198,26 +219,33 @@ public class TileIngots extends TileEntity {
 	public List<ItemStack> ingotList() {
 		if (ingots != null)
 			return ingots;
+		TileIngots master = getMaster();
+		if (master == null)
+			return Collections.emptyList();
 		List<ItemStack> ingotList = new ArrayList<>();
-		for (Object2IntMap.Entry<ItemStack> e : inv.inventory.object2IntEntrySet()) {
+		for (Object2IntMap.Entry<ItemStack> e : master.inv.inventory.object2IntEntrySet()) {
 			int max = Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot);
+			//			int max = Stackable.itemsPerIngot;
 			int value = e.getIntValue();
 			while (value > 0) {
 				if (value > max) {
 					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), max));
+					//					ingotList.add(e.getKey());
 					value -= max;
 				} else {
 					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), value));
+					//					ingotList.add(e.getKey());
 					break;
 				}
 			}
 		}
-		while (ingotList.size() > maxIngotAmount)
+		int max = maxIngotAmount * getAllIngotBlocks().size();
+		while (ingotList.size() > max)
 			ingotList.remove(ingotList.size() - 1);
-		while (ingotList.size() < maxIngotAmount)
+		while (ingotList.size() < max)
 			ingotList.add(ItemStack.EMPTY);
-		return ingots = ingotList;
-
+		int start = getLevel() * maxIngotAmount;
+		return ingots = ingotList.subList(start, start + maxIngotAmount);
 	}
 
 	public ItemStack lookingStack(EntityPlayer player) {
@@ -267,6 +295,13 @@ public class TileIngots extends TileEntity {
 			}
 		}
 		return raytrace = Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
+	}
+	
+	@Override
+	public void invalidate() {
+		super.invalidate();
+		System.out.println("removed");
+		Thread.dumpStack();
 	}
 
 }
