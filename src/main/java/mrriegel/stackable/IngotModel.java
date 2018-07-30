@@ -61,7 +61,7 @@ public class IngotModel implements IBakedModel {
 		if (side != null)
 			return Collections.emptyList();
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
-		if ("getDamageModel".equals(ste.getMethodName())) {
+		if ("getDamageModel".equals(ste.getMethodName()) && false) {
 			return brokenQuads;
 		}
 		TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);

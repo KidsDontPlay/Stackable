@@ -13,6 +13,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -22,8 +23,10 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 
 public class BlockIngots extends Block {
+	public static final IBlockState DAMAGE = new Block(Material.AIR).getDefaultState();
 	public static final IUnlistedProperty<TileIngots> prop = new IUnlistedProperty<TileIngots>() {
 
 		@Override
@@ -62,6 +65,21 @@ public class BlockIngots extends Block {
 	@Override
 	public boolean hasTileEntity(IBlockState state) {
 		return true;
+	}
+
+	@Override
+	public BlockRenderLayer getBlockLayer() {
+		return BlockRenderLayer.SOLID;
+	}
+
+	@Override
+	public IBlockState getActualState(IBlockState state, IBlockAccess worldIn, BlockPos pos) {
+		if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+			if (ClientUtils.brokenBlocks.containsKey(pos)) {
+				return DAMAGE;
+			}
+		}
+		return super.getActualState(state, worldIn, pos);
 	}
 
 	@Override
@@ -141,16 +159,18 @@ public class BlockIngots extends Block {
 				IntStream.range(0, tile.inv.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, tile.inv.getStackInSlot(i)));
 				worldIn.removeTileEntity(pos);
 			} else {
-				List<TileIngots> ts = tile.getAllIngotBlocks();
-				for (int i = ts.size() - 1; i >= 0; i--) {
-					TileIngots t2 = ts.get(i);
-					for (ItemStack s : t2.ingotList()) {
-						spawnAsEntity(worldIn, pos, t2.getMaster().inv.extractItem(s, s.getCount(), false));
+				if (tile.getMaster() != null) {
+					List<TileIngots> ts = tile.getAllIngotBlocks();
+					for (int i = ts.size() - 1; i >= 0; i--) {
+						TileIngots t2 = ts.get(i);
+						for (ItemStack s : t2.ingotList()) {
+							spawnAsEntity(worldIn, pos, t2.getMaster().inv.extractItem(s, s.getCount(), false));
+						}
+						if (t2 == tile)
+							break;
 					}
-					if (t2 == tile)
-						break;
+					worldIn.removeTileEntity(pos);
 				}
-				worldIn.removeTileEntity(pos);
 			}
 		}
 		worldIn.removeTileEntity(pos);

@@ -64,12 +64,13 @@ public class Events {
 			BlockPos newPos = event.getPos().offset(event.getFace());
 			if (player.world.isAirBlock(newPos)) {
 				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
-					player.world.setBlockState(newPos, Stackable.ingots.getDefaultState(), 2);
-					TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
-					t.isMaster = true;
-					player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
-					Stackable.ingots.onBlockActivated(player.world, newPos, Stackable.ingots.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
-					placed.add(player.getUniqueID());
+					if (player.world.setBlockState(newPos, Stackable.ingots.getDefaultState(), 2)) {
+						TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
+						t.isMaster = true;
+						player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
+						Stackable.ingots.onBlockActivated(player.world, newPos, Stackable.ingots.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
+						placed.add(player.getUniqueID());
+					}
 				}
 				event.setUseBlock(Result.DENY);
 				event.setCanceled(true);

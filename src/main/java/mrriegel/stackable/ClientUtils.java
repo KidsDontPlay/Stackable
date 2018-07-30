@@ -3,7 +3,9 @@ package mrriegel.stackable;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -20,34 +22,46 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.BlockModelShapes;
+import net.minecraft.client.renderer.DestroyBlockProgress;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundCategory;
+import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TextFormatting;
+import net.minecraft.world.IWorldEventListener;
+import net.minecraft.world.World;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
+import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.oredict.OreDictionary;
 
@@ -60,6 +74,7 @@ public class ClientUtils {
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
+	public static Map<BlockPos, DestroyBlockProgress> brokenBlocks = new HashMap<>();
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
@@ -206,13 +221,84 @@ public class ClientUtils {
 		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotModel());
 	}
 
+	@SubscribeEvent
+	public static void model(Load event) {
+	}
+
+	@SubscribeEvent
+	public static void load(Load event) {
+		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
+		bakedModelStore.put(BlockIngots.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
+		brokenBlocks.clear();
+		event.getWorld().addEventListener(new IWorldEventListener() {
+
+			@Override
+			public void spawnParticle(int id, boolean ignoreRange, boolean p_190570_3_, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+			}
+
+			@Override
+			public void spawnParticle(int particleID, boolean ignoreRange, double xCoord, double yCoord, double zCoord, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
+			}
+
+			@Override
+			public void sendBlockBreakProgress(int breakerId, BlockPos pos, int progress) {
+				if (progress >= 0 && progress < 10) {
+					DestroyBlockProgress destroyblockprogress = brokenBlocks.get(pos);
+					if (destroyblockprogress == null) {
+						destroyblockprogress = new DestroyBlockProgress(breakerId, pos);
+						brokenBlocks.put(pos, destroyblockprogress);
+					}
+					destroyblockprogress.setPartialBlockDamage(progress);
+				} else {
+					brokenBlocks.remove(pos);
+				}
+			}
+
+			@Override
+			public void playSoundToAllNearExcept(EntityPlayer player, SoundEvent soundIn, SoundCategory category, double x, double y, double z, float volume, float pitch) {
+			}
+
+			@Override
+			public void playRecord(SoundEvent soundIn, BlockPos pos) {
+			}
+
+			@Override
+			public void playEvent(EntityPlayer player, int type, BlockPos blockPosIn, int data) {
+			}
+
+			@Override
+			public void onEntityRemoved(Entity entityIn) {
+			}
+
+			@Override
+			public void onEntityAdded(Entity entityIn) {
+			}
+
+			@Override
+			public void notifyLightSet(BlockPos pos) {
+			}
+
+			@Override
+			public void notifyBlockUpdate(World worldIn, BlockPos pos, IBlockState oldState, IBlockState newState, int flags) {
+			}
+
+			@Override
+			public void markBlockRangeForRenderUpdate(int x1, int y1, int z1, int x2, int y2, int z2) {
+			}
+
+			@Override
+			public void broadcastSound(int soundID, BlockPos pos, int data) {
+			}
+		});
+	}
+
 	static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {
 		float r = 1f, g = 1f, b = 1f;
 		if (tas == null) {
 			tas = defaultTas;
 			Color col = new Color(color(stack));
 			float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
-			col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .15f));
+			col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
 			r = col.getRed() / 255f;
 			g = col.getGreen() / 255f;
 			b = col.getBlue() / 255f;

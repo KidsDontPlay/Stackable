@@ -31,6 +31,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			return ItemStack.EMPTY;
 		int i = inventory.getInt(stack);
 		i = Math.min(amount, i);
+		i = Math.min(stack.getMaxStackSize(), i);
 		if (i <= 0)
 			return ItemStack.EMPTY;
 		if (!simulate) {
@@ -54,10 +55,12 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			List<TileIngots> l = tile.getAllIngotBlocks();
 			TileIngots last = l.get(l.size() - 1);
 			if (tile.getWorld().isAirBlock(last.getPos().up())) {
-				tile.getWorld().setBlockState(last.getPos().up(), Stackable.ingots.getDefaultState());
-				TileIngots n = (TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
-				n.masterPos = tile.getPos();
-				canInsert = freeItems(stack);
+				if (tile.getWorld().setBlockState(last.getPos().up(), Stackable.ingots.getDefaultState())) {
+					TileIngots n = (TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
+					n.masterPos = tile.getPos();
+					canInsert = freeItems(stack);
+				} else
+					noSpace = true;
 			} else
 				noSpace = true;
 		}

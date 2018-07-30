@@ -110,6 +110,19 @@ public class TileIngots extends TileEntity {
 	}
 
 	@Override
+	public void setWorld(World worldIn) {
+		super.setWorld(worldIn);
+		if (!worldIn.isRemote) {
+			new Thread(() -> worldIn.getMinecraftServer().addScheduledTask(() -> {
+				if (ingotList().stream().allMatch(ItemStack::isEmpty)) {
+					worldIn.setBlockToAir(pos);
+					worldIn.removeTileEntity(pos);
+				}
+			})).start();
+		}
+	}
+
+	@Override
 	public void readFromNBT(NBTTagCompound compound) {
 		isMaster = compound.getBoolean("isMaster");
 		masterPos = compound.hasKey("master") ? BlockPos.fromLong(compound.getLong("master")) : null;
@@ -198,12 +211,12 @@ public class TileIngots extends TileEntity {
 		Vec3d vecSize = new Vec3d(xs, ys, zs);
 		Vec3d vecSizeI = new Vec3d(zs, ys, xs);
 		List<AxisAlignedBB> lis = new ArrayList<>();
-		for (int y = 0; y < Stackable.perY; y++) {
+		mian: for (int y = 0; y < Stackable.perY; y++) {
 			for (int z = 0; z < Stackable.perZ; z++) {
 				for (int x = 0; x < Stackable.perX; x++) {
 					ItemStack s = ingotList.get(count);
 					if (s.isEmpty())
-						break;
+						break mian;
 					boolean even = y % 2 == 0;
 					Vec3d v = new Vec3d(even ? x * xs : z * zs, y * ys, even ? z * zs : x * xs);
 					Vec3d vv = v.add(even ? vecSize : vecSizeI);
@@ -225,18 +238,11 @@ public class TileIngots extends TileEntity {
 		List<ItemStack> ingotList = new ArrayList<>();
 		for (Object2IntMap.Entry<ItemStack> e : master.inv.inventory.object2IntEntrySet()) {
 			int max = Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot);
-			//			int max = Stackable.itemsPerIngot;
 			int value = e.getIntValue();
 			while (value > 0) {
-				if (value > max) {
-					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), max));
-					//					ingotList.add(e.getKey());
-					value -= max;
-				} else {
-					ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), value));
-					//					ingotList.add(e.getKey());
-					break;
-				}
+				int size = Math.min(max, value);
+				ingotList.add(ItemHandlerHelper.copyStackWithSize(e.getKey(), size));
+				value -= size;
 			}
 		}
 		int max = maxIngotAmount * getAllIngotBlocks().size();
@@ -245,9 +251,7 @@ public class TileIngots extends TileEntity {
 		while (ingotList.size() < max)
 			ingotList.add(ItemStack.EMPTY);
 		int start = getLevel() * maxIngotAmount;
-
-		ingots = ingotList.subList(start, start + maxIngotAmount);
-		return ingots;
+		return ingots = ingotList.subList(start, start + maxIngotAmount);
 	}
 
 	public ItemStack lookingStack(EntityPlayer player) {
@@ -297,11 +301,6 @@ public class TileIngots extends TileEntity {
 			}
 		}
 		return raytrace = Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
-	}
-
-	@Override
-	public void invalidate() {
-		super.invalidate();
 	}
 
 }
