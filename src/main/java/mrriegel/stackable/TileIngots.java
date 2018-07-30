@@ -180,7 +180,7 @@ public class TileIngots extends TileEntity {
 	public AxisAlignedBB getBox() {
 		if (box != null)
 			return box;
-		AxisAlignedBB aabb = new AxisAlignedBB(0, 0, 0, 1, 1 / 16, 1);
+		AxisAlignedBB aabb = new AxisAlignedBB(0, 0, 0, 1, 1 / 16., 1);
 		for (AxisAlignedBB ab : ingotBoxes())
 			aabb = aabb.union(ab);
 		return box = aabb;
@@ -245,7 +245,9 @@ public class TileIngots extends TileEntity {
 		while (ingotList.size() < max)
 			ingotList.add(ItemStack.EMPTY);
 		int start = getLevel() * maxIngotAmount;
-		return ingots = ingotList.subList(start, start + maxIngotAmount);
+
+		ingots = ingotList.subList(start, start + maxIngotAmount);
+		return ingots;
 	}
 
 	public ItemStack lookingStack(EntityPlayer player) {
@@ -296,12 +298,10 @@ public class TileIngots extends TileEntity {
 		}
 		return raytrace = Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
 	}
-	
+
 	@Override
 	public void invalidate() {
 		super.invalidate();
-		System.out.println("removed");
-		Thread.dumpStack();
 	}
 
 }

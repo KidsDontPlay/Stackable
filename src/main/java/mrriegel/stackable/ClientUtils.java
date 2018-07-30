@@ -139,9 +139,9 @@ public class ClientUtils {
 				GlStateManager.depthMask(false);
 				EntityPlayer player = event.getPlayer();
 				float partialTicks = event.getPartialTicks();
-				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * (double) partialTicks;
-				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * (double) partialTicks;
-				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * (double) partialTicks;
+				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
+				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
+				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
 				//				Pair<Vec3i, AxisAlignedBB> p = rayCache.get((TileIngots) t, () -> ((TileIngots) t).lookingPos(mc.player));
 				Pair<Vec3i, AxisAlignedBB> p = ((TileIngots) t).lookingPos(mc.player);
 				if (p.getRight() != null) {

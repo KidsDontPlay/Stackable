@@ -50,27 +50,19 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			return stack;
 		int canInsert = freeItems(stack);
 		boolean noSpace = false;
-		while (canInsert <= 0 && !noSpace) {
+		while (canInsert <= stack.getCount() && !noSpace) {
 			List<TileIngots> l = tile.getAllIngotBlocks();
 			TileIngots last = l.get(l.size() - 1);
 			if (tile.getWorld().isAirBlock(last.getPos().up())) {
 				tile.getWorld().setBlockState(last.getPos().up(), Stackable.ingots.getDefaultState());
-				TileIngots n=(TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
-				n.masterPos=tile.getPos();
-				canInsert=freeItems(stack);
+				TileIngots n = (TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
+				n.masterPos = tile.getPos();
+				canInsert = freeItems(stack);
 			} else
 				noSpace = true;
 		}
-		int insert = 0;
 		if (!simulate && canInsert > 0) {
-			inventory.addTo(stack, insert = Math.min(stack.getCount(), canInsert));
-			if (insert < stack.getCount()) {
-				int diff = stack.getCount() - insert;
-				//				while (diff > 0) {
-				//
-				//				}
-
-			}
+			inventory.addTo(stack, Math.min(stack.getCount(), canInsert));
 			onChange();
 		}
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
@@ -86,6 +78,8 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			t.positions = null;
 			t.ingots = null;
 			t.raytrace = null;
+			if (!t.isMaster && t.ingotList().stream().allMatch(ItemStack::isEmpty))
+				t.getWorld().setBlockToAir(t.getPos());
 		}
 		if (!threadStarted) {
 			threadStarted = true;

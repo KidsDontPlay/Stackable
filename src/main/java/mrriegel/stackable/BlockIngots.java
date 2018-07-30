@@ -137,11 +137,19 @@ public class BlockIngots extends Block {
 		if (t instanceof TileIngots) {
 			TileIngots tile = (TileIngots) t;
 			if (tile.isMaster) {
+				tile.inv.items = null;
 				IntStream.range(0, tile.inv.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, tile.inv.getStackInSlot(i)));
 				worldIn.removeTileEntity(pos);
 			} else {
-				for(ItemStack s:tile.ingotList())
-					spawnAsEntity(worldIn, pos, tile.getMaster().inv.extractItem(s, 64, false));
+				List<TileIngots> ts = tile.getAllIngotBlocks();
+				for (int i = ts.size() - 1; i >= 0; i--) {
+					TileIngots t2 = ts.get(i);
+					for (ItemStack s : t2.ingotList()) {
+						spawnAsEntity(worldIn, pos, t2.getMaster().inv.extractItem(s, s.getCount(), false));
+					}
+					if (t2 == tile)
+						break;
+				}
 				worldIn.removeTileEntity(pos);
 			}
 		}
