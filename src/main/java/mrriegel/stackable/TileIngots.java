@@ -3,9 +3,7 @@ package mrriegel.stackable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -185,9 +183,7 @@ public class TileIngots extends TileEntity {
 	}
 
 	public TileIngots getMaster() {
-		if (isMaster)
-			return this;
-		return masterPos == null ? null : (TileIngots) world.getTileEntity(masterPos);
+		return isMaster ? this : masterPos == null ? null : (TileIngots) world.getTileEntity(masterPos);
 	}
 
 	public AxisAlignedBB getBox() {
@@ -208,8 +204,7 @@ public class TileIngots extends TileEntity {
 			return Collections.emptyList();
 		int count = 0;
 		double xs = 1. / Stackable.perX, ys = 1. / Stackable.perY, zs = 1. / Stackable.perZ;
-		Vec3d vecSize = new Vec3d(xs, ys, zs);
-		Vec3d vecSizeI = new Vec3d(zs, ys, xs);
+		Vec3d vecEven = new Vec3d(xs, ys, zs), vecUneven = new Vec3d(zs, ys, xs);
 		List<AxisAlignedBB> lis = new ArrayList<>();
 		mian: for (int y = 0; y < Stackable.perY; y++) {
 			for (int z = 0; z < Stackable.perZ; z++) {
@@ -219,7 +214,7 @@ public class TileIngots extends TileEntity {
 						break mian;
 					boolean even = y % 2 == 0;
 					Vec3d v = new Vec3d(even ? x * xs : z * zs, y * ys, even ? z * zs : x * xs);
-					Vec3d vv = v.add(even ? vecSize : vecSizeI);
+					Vec3d vv = v.add(even ? vecEven : vecUneven);
 					AxisAlignedBB a = new AxisAlignedBB(v.x, v.y, v.z, vv.x, vv.y, vv.z);
 					lis.add(a);
 					count++;
@@ -267,40 +262,32 @@ public class TileIngots extends TileEntity {
 		double reach = player.getEntityAttribute(EntityPlayer.REACH_DISTANCE).getAttributeValue();
 		Vec3d p1 = player.getPositionEyes(1);
 		Vec3d look = player.getLook(1);
-		Vec3d p2 = p1.add(look.scale(reach));
+		Vec3d p2 = p1.add(look.scale(reach + 1));
 		if (p1.equals(eye) && p2.equals(front) && raytrace != null)
 			return raytrace;
 		eye = p1;
 		front = p2;
-		HashMap<AxisAlignedBB, Pair<Integer, RayTraceResult>> hitMap = new HashMap<>();
+		int index = -1;
+		AxisAlignedBB ab = null;
+		RayTraceResult rtr = null;
 		List<AxisAlignedBB> l = ingotBoxes();
 		for (int i = 0; i < l.size(); i++) {
 			AxisAlignedBB pp = l.get(i);
-			AxisAlignedBB aabb = pp.offset(pos);
 			RayTraceResult rtr2 = null;
-			if ((rtr2 = aabb.calculateIntercept(p1, p2)) != null) {
-				hitMap.put(pp, Pair.of(i, rtr2));
+			if ((rtr2 = pp.offset(pos).calculateIntercept(p1, p2)) != null) {
+				if (rtr == null || rtr2.hitVec.distanceTo(p1) < rtr.hitVec.distanceTo(p1)) {
+					rtr = rtr2;
+					index = i;
+					ab = pp;
+				}
 			}
 		}
-		if (hitMap.isEmpty())
-			return raytrace = Pair.of(null, null);
-		AxisAlignedBB fin = null;
-		RayTraceResult r1 = null;
-		for (Map.Entry<AxisAlignedBB, Pair<Integer, RayTraceResult>> e : hitMap.entrySet()) {
-			AxisAlignedBB pp = e.getKey();
-			if (fin == null) {
-				fin = pp;
-				r1 = hitMap.get(pp).getRight();
-				continue;
-			}
-			RayTraceResult r2 = e.getValue().getRight();
-			Vec3d v1 = e.getValue().getRight().hitVec, v2 = r1.hitVec;
-			if (v1.distanceTo(p1) < v2.distanceTo(p1)) {
-				fin = pp;
-				r1 = r2;
-			}
-		}
-		return raytrace = Pair.of(TileIngots.coordMap.get(hitMap.get(fin).getLeft()), fin);
+		Pair<Vec3i, AxisAlignedBB> fin = null;
+		if (rtr == null)
+			fin = Pair.of(null, null);
+		else
+			fin = Pair.of(TileIngots.coordMap.get(index), ab);
+		return raytrace = fin;
 	}
 
 }

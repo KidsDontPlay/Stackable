@@ -222,10 +222,6 @@ public class ClientUtils {
 	}
 
 	@SubscribeEvent
-	public static void model(Load event) {
-	}
-
-	@SubscribeEvent
 	public static void load(Load event) {
 		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
 		bakedModelStore.put(BlockIngots.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));

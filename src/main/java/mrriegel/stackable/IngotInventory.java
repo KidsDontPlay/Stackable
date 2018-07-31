@@ -30,8 +30,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		if (stack.isEmpty())
 			return ItemStack.EMPTY;
 		int i = inventory.getInt(stack);
-		i = Math.min(amount, i);
-		i = Math.min(stack.getMaxStackSize(), i);
+		i = Math.min(amount, Math.min(stack.getMaxStackSize(), i));
 		if (i <= 0)
 			return ItemStack.EMPTY;
 		if (!simulate) {
@@ -65,7 +64,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 				noSpace = true;
 		}
 		if (!simulate && canInsert > 0) {
-			inventory.addTo(stack, Math.min(stack.getCount(), canInsert));
+			inventory.addTo(stack.copy(), Math.min(stack.getCount(), canInsert));
 			onChange();
 		}
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);

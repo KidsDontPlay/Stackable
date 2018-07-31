@@ -60,14 +60,16 @@ public class IngotModel implements IBakedModel {
 	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
 		if (side != null)
 			return Collections.emptyList();
-		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
-		if ("getDamageModel".equals(ste.getMethodName()) && false) {
-			return brokenQuads;
+		if (!true) {
+			StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
+			if ("getDamageModel".equals(ste.getMethodName())) {
+				return brokenQuads;
+			}
 		}
 		TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {
-			//						cachedQuads.clear();
+			//			cachedQuads.clear();
 			if (!tile.changedClient && cachedQuads.containsKey(tile))
 				return cachedQuads.get(tile);
 			List<ItemStack> stacks = tile.ingotList();
@@ -79,10 +81,8 @@ public class IngotModel implements IBakedModel {
 			}
 			tile.changedClient = false;
 			cachedQuads.put(tile, quads);
-		} else {
+		} else
 			quads.addAll(fallBack);
-
-		}
 		return quads;
 	}
 

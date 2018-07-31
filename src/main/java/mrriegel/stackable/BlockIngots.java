@@ -169,8 +169,8 @@ public class BlockIngots extends Block {
 						if (t2 == tile)
 							break;
 					}
-					worldIn.removeTileEntity(pos);
 				}
+				worldIn.removeTileEntity(pos);
 			}
 		}
 		worldIn.removeTileEntity(pos);
