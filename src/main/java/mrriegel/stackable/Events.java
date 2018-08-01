@@ -85,7 +85,7 @@ public class Events {
 		TileEntity t = event.getWorld().getTileEntity(pos);
 		EntityPlayer player = event.getEntityPlayer();
 		ItemStack h = player.getHeldItemMainhand();
-		if (t instanceof TileIngots && h.getItem().getToolClasses(h).isEmpty()) {
+		if (t instanceof TileIngots && !h.getItem().getToolClasses(h).contains("pickaxe")) {
 			event.setCanceled(true);
 			event.setUseBlock(Result.DENY);
 			event.setUseItem(Result.DENY);
@@ -101,8 +101,7 @@ public class Events {
 				AxisAlignedBB aabb = ((TileIngots) t).lookingPos(player).getRight();
 				if (aabb != null) {
 					aabb = aabb.offset(t.getPos());
-					Vec3d center = aabb.getCenter();
-					ei.setPosition(center.x, aabb.minY, center.z);
+					ei.setPosition(aabb.minX, aabb.minY, aabb.minZ);
 				} else
 					ei.setPosition(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
 				t.getWorld().spawnEntity(ei);

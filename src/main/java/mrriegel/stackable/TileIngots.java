@@ -61,6 +61,7 @@ public class TileIngots extends TileEntity {
 
 	public boolean needSync = true;
 	public boolean isMaster;
+	public boolean changedClient = true;
 	public BlockPos masterPos;
 	public IngotInventory inv = new IngotInventory(this);
 	//cache
@@ -68,7 +69,6 @@ public class TileIngots extends TileEntity {
 	public List<AxisAlignedBB> positions = null;
 	public List<ItemStack> ingots = null;
 	public Pair<Vec3i, AxisAlignedBB> raytrace;
-	public boolean changedClient = true;
 
 	@Override
 	public NBTTagCompound getUpdateTag() {
@@ -82,14 +82,12 @@ public class TileIngots extends TileEntity {
 
 	@Override
 	public SPacketUpdateTileEntity getUpdatePacket() {
-		NBTTagCompound tag = writeToNBT(new NBTTagCompound());
-		return new SPacketUpdateTileEntity(this.pos, 1337, tag);
+		return new SPacketUpdateTileEntity(pos, 1337, serializeNBT());
 	}
 
 	@Override
 	public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
-		NBTTagCompound tag = pkt.getNbtCompound();
-		readFromNBT(tag);
+		readFromNBT(pkt.getNbtCompound());
 	}
 
 	public void change() {
@@ -108,15 +106,21 @@ public class TileIngots extends TileEntity {
 	}
 
 	@Override
-	public void setWorld(World worldIn) {
-		super.setWorld(worldIn);
-		if (!worldIn.isRemote) {
-			new Thread(() -> worldIn.getMinecraftServer().addScheduledTask(() -> {
-				if (ingotList().stream().allMatch(ItemStack::isEmpty)) {
-					worldIn.setBlockToAir(pos);
-					worldIn.removeTileEntity(pos);
+	public void onLoad() {
+		if (!world.isRemote) {
+			new Thread(() -> {
+				try {
+					Thread.sleep(4000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
-			})).start();
+				world.getMinecraftServer().addScheduledTask(() -> {
+					if (ingotList().stream().allMatch(ItemStack::isEmpty)) {
+						world.setBlockToAir(pos);
+						world.removeTileEntity(pos);
+					}
+				});
+			}).start();
 		}
 	}
 
@@ -274,12 +278,11 @@ public class TileIngots extends TileEntity {
 		for (int i = 0; i < l.size(); i++) {
 			AxisAlignedBB pp = l.get(i);
 			RayTraceResult rtr2 = null;
-			if ((rtr2 = pp.offset(pos).calculateIntercept(p1, p2)) != null) {
-				if (rtr == null || rtr2.hitVec.distanceTo(p1) < rtr.hitVec.distanceTo(p1)) {
-					rtr = rtr2;
-					index = i;
-					ab = pp;
-				}
+			if ((rtr2 = pp.offset(pos).calculateIntercept(p1, p2)) != null && //
+					(rtr == null || rtr2.hitVec.distanceTo(p1) < rtr.hitVec.distanceTo(p1))) {
+				rtr = rtr2;
+				index = i;
+				ab = pp;
 			}
 		}
 		Pair<Vec3i, AxisAlignedBB> fin = null;

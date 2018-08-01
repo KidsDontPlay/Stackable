@@ -10,12 +10,13 @@ import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
@@ -65,11 +66,6 @@ public class BlockIngots extends Block {
 	@Override
 	public boolean hasTileEntity(IBlockState state) {
 		return true;
-	}
-
-	@Override
-	public BlockRenderLayer getBlockLayer() {
-		return BlockRenderLayer.SOLID;
 	}
 
 	@Override
@@ -141,6 +137,7 @@ public class BlockIngots extends Block {
 			TileEntity tile = worldIn.getTileEntity(pos);
 			if (tile instanceof TileIngots && hand == EnumHand.MAIN_HAND && TileIngots.validItem(playerIn.getHeldItemMainhand())) {
 				ItemStack rest = ((TileIngots) tile).getMaster().inv.insertItem(playerIn.getHeldItem(hand), false);
+				worldIn.playSound(null, pos, SoundEvents.BLOCK_METAL_PLACE, SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
 				return true;
@@ -161,7 +158,7 @@ public class BlockIngots extends Block {
 			} else {
 				if (tile.getMaster() != null) {
 					List<TileIngots> ts = tile.getAllIngotBlocks();
-					for (int i = ts.size() - 1; i >= 0; i--) {
+					for (int i = ts.size() - 1; i >= 1; i--) {
 						TileIngots t2 = ts.get(i);
 						for (ItemStack s : t2.ingotList()) {
 							spawnAsEntity(worldIn, pos, t2.getMaster().inv.extractItem(s, s.getCount(), false));

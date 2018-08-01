@@ -42,7 +42,7 @@ public class Stackable {
 	public static final String MODID = "stackable";
 
 	//config
-	public static int itemsPerIngot, perX, perY, perZ;
+	public static int itemsPerIngot, perX, perY, perZ, overlay;
 	public static boolean useBlockTexture, useCompressedTexture;
 	public static Set<ResourceLocation> allowedIngots;
 
@@ -53,13 +53,15 @@ public class Stackable {
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		Configuration config = new Configuration(event.getSuggestedConfigurationFile());
-		itemsPerIngot = config.getInt("itemsPerIngot", Configuration.CATEGORY_GENERAL, 4, 1, 64, "Items per Ingot");
-		perX = config.getInt("x", "ingotsPerBlock", 6, 1, 32, "");
-		perY = config.getInt("y", "ingotsPerBlock", 8, 1, 32, "");
-		perZ = config.getInt("z", "ingotsPerBlock", 2, 1, 32, "");
+		itemsPerIngot = config.getInt("itemsPerIngot", Configuration.CATEGORY_GENERAL, 4, 1, 64, "Items per visual ingot");
+		String name = Configuration.CATEGORY_GENERAL + ".ingotsPerBlock";
+		perX = config.getInt("x", name, 6, 1, 24, "");
+		perY = config.getInt("y", name, 8, 1, 24, "");
+		perZ = config.getInt("z", name, 2, 1, 16, "");
 		useBlockTexture = config.getBoolean("useBlockTexture", Configuration.CATEGORY_CLIENT, true, "Use textures from blocks for ingots (e.g. iron block texture for iron ingot).");
 		useCompressedTexture = config.getBoolean("useCompressedTexture", Configuration.CATEGORY_CLIENT, true, "Use compressed textures.");
-		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", Configuration.CATEGORY_GENERAL, new String[] {}, "Items that are allowed to be added to the ingot block as well.")).map(ResourceLocation::new).collect(Collectors.toSet());
+		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", Configuration.CATEGORY_GENERAL, new String[] {}, "Items that are allowed to be added to the ingot block as well. (Notation: MODID:ITEMNAME)")).map(ResourceLocation::new).collect(Collectors.toSet());
+		overlay = config.getInt("overlay", Configuration.CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + Configuration.NEW_LINE + "1 - Overlay visible while sneaking" + Configuration.NEW_LINE + "2 - Overlay always visible");
 		if (config.hasChanged())
 			config.save();
 		generateConstants();

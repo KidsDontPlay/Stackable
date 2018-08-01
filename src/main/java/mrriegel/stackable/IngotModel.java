@@ -69,7 +69,7 @@ public class IngotModel implements IBakedModel {
 		TileIngots tile = ((IExtendedBlockState) state).getValue(BlockIngots.prop);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {
-			//			cachedQuads.clear();
+			//cachedQuads.clear();
 			if (!tile.changedClient && cachedQuads.containsKey(tile))
 				return cachedQuads.get(tile);
 			List<ItemStack> stacks = tile.ingotList();

@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -29,16 +30,16 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	public ItemStack extractItem(ItemStack stack, int amount, boolean simulate) {
 		if (stack.isEmpty())
 			return ItemStack.EMPTY;
-		int i = inventory.getInt(stack);
-		i = Math.min(amount, Math.min(stack.getMaxStackSize(), i));
+		int i = Math.min(amount, Math.min(stack.getMaxStackSize(), inventory.getInt(stack)));
 		if (i <= 0)
 			return ItemStack.EMPTY;
 		if (!simulate) {
 			inventory.addTo(stack, -i);
 			if (inventory.getInt(stack) == 0) {
 				inventory.removeInt(stack);
-				if (inventory.isEmpty() && !tile.getWorld().isRemote)
+				if (inventory.isEmpty()) {
 					new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> tile.getWorld().setBlockToAir(tile.getPos()))).start();
+				}
 			}
 			onChange();
 		}
@@ -50,16 +51,14 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			return stack;
 		int canInsert = freeItems(stack);
 		boolean noSpace = false;
-		while (canInsert <= stack.getCount() && !noSpace) {
+		while (canInsert < stack.getCount() && !noSpace) {
 			List<TileIngots> l = tile.getAllIngotBlocks();
 			TileIngots last = l.get(l.size() - 1);
-			if (tile.getWorld().isAirBlock(last.getPos().up())) {
-				if (tile.getWorld().setBlockState(last.getPos().up(), Stackable.ingots.getDefaultState())) {
-					TileIngots n = (TileIngots) tile.getWorld().getTileEntity(last.getPos().up());
-					n.masterPos = tile.getPos();
-					canInsert = freeItems(stack);
-				} else
-					noSpace = true;
+			BlockPos neu = last.getPos().up();
+			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, Stackable.ingots.getDefaultState())) {
+				TileIngots n = (TileIngots) tile.getWorld().getTileEntity(neu);
+				n.masterPos = tile.getPos();
+				canInsert = freeItems(stack);
 			} else
 				noSpace = true;
 		}
@@ -71,8 +70,6 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	}
 
 	private void onChange() {
-		if (tile.getWorld().isRemote)
-			return;
 		for (TileIngots t : tile.getAllIngotBlocks()) {
 			t.needSync = true;
 			t.markDirty();
@@ -113,7 +110,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 				occuIngots += Math.ceil(e.getIntValue() / (double) (Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot)));
 			}
 		}
-		int freeIngots = TileIngots.maxIngotAmount * (tile.getAllIngotBlocks().size()) - occuIngots;
+		int freeIngots = TileIngots.maxIngotAmount * tile.getAllIngotBlocks().size() - occuIngots;
 		free += max * freeIngots;
 		return free;
 	}

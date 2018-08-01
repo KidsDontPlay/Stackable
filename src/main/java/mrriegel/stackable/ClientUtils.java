@@ -136,8 +136,6 @@ public class ClientUtils {
 		IngotModel.init();
 	}
 
-	//	private static Cache<TileIngots, Pair<Vec3i, AxisAlignedBB>> rayCache = CacheBuilder.newBuilder().maximumSize(100).expireAfterWrite(50, TimeUnit.MILLISECONDS).build();
-
 	@SubscribeEvent
 	public static void draw(DrawBlockHighlightEvent event) throws ExecutionException {
 		RayTraceResult rtr = event.getTarget();
@@ -145,7 +143,7 @@ public class ClientUtils {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 			if (t instanceof TileIngots) {
 				ItemStack h = mc.player.getHeldItemMainhand();
-				if (!h.getItem().getToolClasses(h).isEmpty())
+				if (h.getItem().getToolClasses(h).contains("pickaxe"))
 					return;
 				GlStateManager.enableBlend();
 				GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
@@ -157,17 +155,19 @@ public class ClientUtils {
 				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
-				//				Pair<Vec3i, AxisAlignedBB> p = rayCache.get((TileIngots) t, () -> ((TileIngots) t).lookingPos(mc.player));
 				Pair<Vec3i, AxisAlignedBB> p = ((TileIngots) t).lookingPos(mc.player);
 				if (p.getRight() != null) {
-					Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(p.getLeft()))));
-					float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+					boolean stackdepend = false;
 					float f1, f2, f3;
-					if (hsb[2] < .5)
+					if (stackdepend) {
+						Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(p.getLeft()))));
+						float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+						if (hsb[2] < .5)
+							f1 = f2 = f3 = 1f;
+						else
+							f1 = f2 = f3 = 0f;
+					} else
 						f1 = f2 = f3 = 1f;
-					else
-						f1 = f2 = f3 = 0f;
-					//					f1 = f2 = f3 = 1f;
 					double grow = Math.sin((mc.world.getTotalWorldTime() + event.getPartialTicks()) / 3) * .003;
 					RenderGlobal.drawSelectionBoundingBox(p.getRight().offset(t.getPos()).grow(grow).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
 					event.setCanceled(true);
@@ -181,13 +181,13 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void renderText(RenderGameOverlayEvent.Post event) {
-		if (event.getType() == ElementType.ALL) {
+		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 				if (t instanceof TileIngots) {
 					ItemStack h = mc.player.getHeldItemMainhand();
-					if (!h.getItem().getToolClasses(h).isEmpty())
+					if (h.getItem().getToolClasses(h).contains("pickaxe"))
 						return;
 					ItemStack s = ((TileIngots) t).lookingStack(mc.player);
 					if (!s.isEmpty()) {
@@ -195,7 +195,7 @@ public class ClientUtils {
 						String text = s.getDisplayName();
 						int textWidth = mc.fontRenderer.getStringWidth(text);
 						int x = sr.getScaledWidth() / 2 - textWidth / 2, y = sr.getScaledHeight() / 2 + mc.fontRenderer.FONT_HEIGHT + 5;
-						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, mc.player.isSneaking() || true ? 0 : 0x66000000, true);
+						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, 0, true);
 						GlStateManager.color(1, 1, 1, 1);
 						mc.getTextureManager().bindTexture(BACKGROUND_TEX);
 						GuiUtils.drawContinuousTexturedBox(x + textWidth + 2, y - 5, 0, 0, 24, 24, 248, 166, 4, 0);
@@ -241,6 +241,7 @@ public class ClientUtils {
 				if (progress >= 0 && progress < 10) {
 					DestroyBlockProgress destroyblockprogress = brokenBlocks.get(pos);
 					if (destroyblockprogress == null) {
+						brokenBlocks.clear();
 						destroyblockprogress = new DestroyBlockProgress(breakerId, pos);
 						brokenBlocks.put(pos, destroyblockprogress);
 					}
