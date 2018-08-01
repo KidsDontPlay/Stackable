@@ -53,6 +53,8 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		boolean noSpace = false;
 		while (canInsert < stack.getCount() && !noSpace) {
 			List<TileIngots> l = tile.getAllIngotBlocks();
+			if (l.size() >= Stackable.maxPileHeight)
+				break;
 			TileIngots last = l.get(l.size() - 1);
 			BlockPos neu = last.getPos().up();
 			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, Stackable.ingots.getDefaultState())) {
@@ -97,7 +99,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			if (TileIngots.strategy.equals(e.getKey(), stack)) {
 				int value = e.getIntValue();
 				while (value > 0) {
-					if (value > max) {
+					if (value >= max) {
 						occuIngots++;
 						value -= max;
 					} else {

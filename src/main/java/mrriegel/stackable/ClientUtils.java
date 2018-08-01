@@ -3,10 +3,8 @@ package mrriegel.stackable;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
@@ -17,13 +15,13 @@ import org.lwjgl.util.vector.Vector3f;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.BlockModelShapes;
-import net.minecraft.client.renderer.DestroyBlockProgress;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
@@ -74,7 +72,7 @@ public class ClientUtils {
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
-	public static Map<BlockPos, DestroyBlockProgress> brokenBlocks = new HashMap<>();
+	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
@@ -134,10 +132,11 @@ public class ClientUtils {
 	public static void init() {
 		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
 		IngotModel.init();
+		brokenBlocks.defaultReturnValue(-1);
 	}
 
 	@SubscribeEvent
-	public static void draw(DrawBlockHighlightEvent event) throws ExecutionException {
+	public static void draw(DrawBlockHighlightEvent event) {
 		RayTraceResult rtr = event.getTarget();
 		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
@@ -239,15 +238,13 @@ public class ClientUtils {
 			@Override
 			public void sendBlockBreakProgress(int breakerId, BlockPos pos, int progress) {
 				if (progress >= 0 && progress < 10) {
-					DestroyBlockProgress destroyblockprogress = brokenBlocks.get(pos);
-					if (destroyblockprogress == null) {
+					int destroyblockprogress = brokenBlocks.getInt(pos);
+					if (destroyblockprogress == -1) {
 						brokenBlocks.clear();
-						destroyblockprogress = new DestroyBlockProgress(breakerId, pos);
-						brokenBlocks.put(pos, destroyblockprogress);
 					}
-					destroyblockprogress.setPartialBlockDamage(progress);
+					brokenBlocks.put(pos, progress);
 				} else {
-					brokenBlocks.remove(pos);
+					brokenBlocks.removeInt(pos);
 				}
 			}
 

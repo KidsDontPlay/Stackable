@@ -19,12 +19,14 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
 
 public class BlockIngots extends Block {
 	public static final IBlockState DAMAGE = new Block(Material.AIR).getDefaultState();
@@ -69,9 +71,17 @@ public class BlockIngots extends Block {
 	}
 
 	@Override
+	public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player) {
+		TileEntity t = world.getTileEntity(pos);
+		if (t instanceof TileIngots)
+			return ItemHandlerHelper.copyStackWithSize(((TileIngots) t).lookingStack(player), 1);
+		return ItemStack.EMPTY;
+	}
+
+	@Override
 	public IBlockState getActualState(IBlockState state, IBlockAccess worldIn, BlockPos pos) {
-		if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
-			if (ClientUtils.brokenBlocks.containsKey(pos)) {
+		if (worldIn instanceof World ? ((World) worldIn).isRemote : FMLCommonHandler.instance().getEffectiveSide().isClient()) {
+			if (ClientUtils.brokenBlocks.containsKey(pos) && false) {
 				return DAMAGE;
 			}
 		}
@@ -81,10 +91,9 @@ public class BlockIngots extends Block {
 	@Override
 	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 		TileEntity t = source.getTileEntity(pos);
-		if (t instanceof TileIngots) {
+		if (t instanceof TileIngots)
 			return ((TileIngots) t).getBox();
-		} else
-			return FULL_BLOCK_AABB;
+		return FULL_BLOCK_AABB;
 	}
 
 	@Override
@@ -126,7 +135,7 @@ public class BlockIngots extends Block {
 	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos) {
 		TileEntity t = worldIn.getTileEntity(pos);
 		if (worldIn.isAirBlock(pos.down()) && t instanceof TileIngots && !((TileIngots) t).isMaster)
-			worldIn.destroyBlock(pos, false);
+			worldIn.setBlockToAir(pos);
 	}
 
 	@Override

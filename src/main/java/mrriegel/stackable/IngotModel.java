@@ -60,7 +60,7 @@ public class IngotModel implements IBakedModel {
 	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
 		if (side != null)
 			return Collections.emptyList();
-		if (!true) {
+		if (true) {
 			StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
 			if ("getDamageModel".equals(ste.getMethodName())) {
 				return brokenQuads;

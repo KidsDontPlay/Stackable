@@ -1,6 +1,7 @@
 package mrriegel.stackable;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -8,7 +9,7 @@ import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.Packet;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
@@ -29,16 +30,24 @@ public class Events {
 	//Sync
 	@SubscribeEvent
 	public static void tick(WorldTickEvent event) {
-		if (event.phase == Phase.END && !event.world.isRemote && event.world.getTotalWorldTime() % 3 == 0) {
+		if (event.phase == Phase.END && !event.world.isRemote) {
 			try {
-				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots && ((TileIngots) t).needSync).forEach(t -> {
-					t.markDirty();
+				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileIngots && ((TileIngots) t).isMaster).forEach(t -> {
+					if (!((TileIngots) t).needSync && (event.world.getTotalWorldTime() + t.getPos().hashCode()) % 100 != 0)
+						return;
 					((TileIngots) t).needSync = false;
-					for (EntityPlayerMP player : event.world.getEntitiesWithinAABB(EntityPlayerMP.class, new AxisAlignedBB(t.getPos().add(-11, -11, -11), t.getPos().add(11, 11, 11)))) {
-						if (player.ticksExisted > 20 || true) {
-							Packet<?> p = t.getUpdatePacket();
-							if (p != null)
-								player.connection.sendPacket(p);
+					Set<EntityPlayerMP> players = new HashSet<>();
+					List<TileIngots> tiles = ((TileIngots) t).getAllIngotBlocks();
+					for (TileIngots tile : tiles)
+						players.addAll(event.world.getEntitiesWithinAABB(EntityPlayerMP.class, new AxisAlignedBB(tile.getPos().add(-11, -11, -11), tile.getPos().add(11, 11, 11))));
+					for (TileIngots tile : tiles) {
+						tile.markDirty();
+						for (EntityPlayerMP player : players) {
+							if (player.ticksExisted > 20 || true) {
+								SPacketUpdateTileEntity p = tile.getUpdatePacket();
+								if (p != null)
+									player.connection.sendPacket(p);
+							}
 						}
 					}
 				});

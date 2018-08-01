@@ -42,7 +42,7 @@ public class Stackable {
 	public static final String MODID = "stackable";
 
 	//config
-	public static int itemsPerIngot, perX, perY, perZ, overlay;
+	public static int itemsPerIngot, perX, perY, perZ, overlay, maxPileHeight;
 	public static boolean useBlockTexture, useCompressedTexture;
 	public static Set<ResourceLocation> allowedIngots;
 
@@ -62,6 +62,7 @@ public class Stackable {
 		useCompressedTexture = config.getBoolean("useCompressedTexture", Configuration.CATEGORY_CLIENT, true, "Use compressed textures.");
 		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", Configuration.CATEGORY_GENERAL, new String[] {}, "Items that are allowed to be added to the ingot block as well. (Notation: MODID:ITEMNAME)")).map(ResourceLocation::new).collect(Collectors.toSet());
 		overlay = config.getInt("overlay", Configuration.CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + Configuration.NEW_LINE + "1 - Overlay visible while sneaking" + Configuration.NEW_LINE + "2 - Overlay always visible");
+		maxPileHeight = config.getInt("maxPileHeight", Configuration.CATEGORY_GENERAL, 30, 1, 512, "Maximum pile height.");
 		if (config.hasChanged())
 			config.save();
 		generateConstants();
@@ -116,5 +117,7 @@ public class Stackable {
 			return l.stream();
 		}).collect(Collectors.toList())).build();
 	}
+
+	//TODO waila support (disable overlay when waila is loaded)
 
 }

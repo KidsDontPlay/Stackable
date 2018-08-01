@@ -107,10 +107,11 @@ public class TileIngots extends TileEntity {
 
 	@Override
 	public void onLoad() {
+		needSync = true;
 		if (!world.isRemote) {
 			new Thread(() -> {
 				try {
-					Thread.sleep(4000);
+					Thread.sleep(world.getMinecraftServer().getTickCounter() < 100 ? 4000 : 1000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
