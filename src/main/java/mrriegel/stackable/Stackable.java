@@ -119,5 +119,6 @@ public class Stackable {
 	}
 
 	//TODO waila support (disable overlay when waila is loaded)
+	//override getDrops
 
 }

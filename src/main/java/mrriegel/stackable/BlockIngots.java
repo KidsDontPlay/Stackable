@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.BlockStateContainer;
@@ -14,6 +15,7 @@ import net.minecraft.init.SoundEvents;
 import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.SoundCategory;
@@ -58,6 +60,7 @@ public class BlockIngots extends Block {
 		setRegistryName("ingots");
 		setUnlocalizedName(getRegistryName().toString());
 		setHardness(6f);
+		setSoundType(SoundType.METAL);
 	}
 
 	@Override
@@ -67,6 +70,16 @@ public class BlockIngots extends Block {
 
 	@Override
 	public boolean hasTileEntity(IBlockState state) {
+		return true;
+	}
+
+	@Override
+	public BlockRenderLayer getBlockLayer() {
+		return BlockRenderLayer.CUTOUT;
+	}
+
+	@Override
+	public boolean isTranslucent(IBlockState state) {
 		return true;
 	}
 

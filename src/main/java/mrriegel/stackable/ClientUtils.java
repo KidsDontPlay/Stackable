@@ -310,22 +310,22 @@ public class ClientUtils {
 				vg = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
 				vh = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ);
 		//bottom
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, va, ve, vf, vb, r, g, b));
+		quads.add(createQuad(tas, va, ve, vf, vb, r, g, b));
 		//top
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, vh, vd, vc, vg, r, g, b));
+		quads.add(createQuad(tas, vh, vd, vc, vg, r, g, b));
 		//sides NESW
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, vh, ve, va, vd, r, g, b));
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, vg, vf, ve, vh, r, g, b));
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, vc, vb, vf, vg, r, g, b));
-		quads.add(createQuad(DefaultVertexFormats.ITEM, tas, vd, va, vb, vc, r, g, b));
+		quads.add(createQuad(tas, vh, ve, va, vd, r, g, b));
+		quads.add(createQuad(tas, vg, vf, ve, vh, r, g, b));
+		quads.add(createQuad(tas, vc, vb, vf, vg, r, g, b));
+		quads.add(createQuad(tas, vd, va, vb, vc, r, g, b));
 	}
 
-	private static BakedQuad createQuad(VertexFormat format, TextureAtlasSprite tas, Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4, float r, float g, float b) {
-		return createQuad(format, tas, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, r, g, b);
+	private static BakedQuad createQuad(TextureAtlasSprite tas, Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4, float r, float g, float b) {
+		return createQuad(tas, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, r, g, b);
 	}
 
-	private static BakedQuad createQuad(VertexFormat format, TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b) {
-		UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(format);
+	private static BakedQuad createQuad(TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b) {
+		UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
 		builder.setTexture(tas);
 		Vec3d normal = new Vec3d(x3, y3, z3).subtract(new Vec3d(x2, y2, z2)).crossProduct(new Vec3d(x1, y1, z1).subtract(new Vec3d(x2, y2, z2))).normalize();
 		Point2f p1 = new Point2f(0, 0), p2 = new Point2f(0, 16), p3 = new Point2f(16, 16), p4 = new Point2f(16, 0);
@@ -364,21 +364,22 @@ public class ClientUtils {
 				p4.y = y4 * 16;
 			}
 		}
-		putVertex(format, tas, builder, normal, x1, y1, z1, p1.x, p1.y, r, g, b);
-		putVertex(format, tas, builder, normal, x2, y2, z2, p2.x, p2.y, r, g, b);
-		putVertex(format, tas, builder, normal, x3, y3, z3, p3.x, p3.y, r, g, b);
-		putVertex(format, tas, builder, normal, x4, y4, z4, p4.x, p4.y, r, g, b);
+		putVertex(tas, builder, normal, x1, y1, z1, p1.x, p1.y, r, g, b);
+		putVertex(tas, builder, normal, x2, y2, z2, p2.x, p2.y, r, g, b);
+		putVertex(tas, builder, normal, x3, y3, z3, p3.x, p3.y, r, g, b);
+		putVertex(tas, builder, normal, x4, y4, z4, p4.x, p4.y, r, g, b);
 		return builder.build();
 	}
 
-	private static void putVertex(VertexFormat format, TextureAtlasSprite sprite, UnpackedBakedQuad.Builder builder, Vec3d normal, float x, float y, float z, float u, float v, float r, float g, float b) {
+	private static void putVertex(TextureAtlasSprite sprite, UnpackedBakedQuad.Builder builder, Vec3d normal, float x, float y, float z, float u, float v, float r, float g, float b) {
+		VertexFormat format = DefaultVertexFormats.ITEM;
 		for (int e = 0; e < format.getElementCount(); e++) {
 			switch (format.getElement(e).getUsage()) {
 			case POSITION:
-				builder.put(e, x, y, z, 1.0f);
+				builder.put(e, x, y, z, 1f);
 				break;
 			case COLOR:
-				builder.put(e, r, g, b);
+				builder.put(e, r, g, b, 1f);
 				break;
 			case UV:
 				if (format.getElement(e).getIndex() == 0) {

@@ -104,6 +104,7 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 						value -= max;
 					} else {
 						occuIngots++;
+						//TODO think
 						free = value % max;
 						break;
 					}
@@ -137,8 +138,11 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 		int[] list2 = compound.getIntArray("list2");
 		Validate.isTrue(list1.tagCount() == list2.length);
 		inventory.clear();
-		for (int i = 0; i < list1.tagCount(); i++)
-			inventory.put(new ItemStack(list1.getCompoundTagAt(i)), list2[i]);
+		for (int i = 0; i < list1.tagCount(); i++) {
+			ItemStack s = new ItemStack(list1.getCompoundTagAt(i));
+			if (!s.isEmpty())
+				inventory.put(s, list2[i]);
+		}
 	}
 
 	@Override
