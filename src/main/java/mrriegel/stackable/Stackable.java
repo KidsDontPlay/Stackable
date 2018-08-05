@@ -42,13 +42,14 @@ public class Stackable {
 	public static final String MODID = "stackable";
 
 	//config
-	public static int itemsPerIngot, perX, perY, perZ, overlay, maxPileHeight;
+	public static int itemsPerIngot, perX, perY, perZ, overlay, maxPileHeight, allSize = 4;
 	public static boolean useBlockTexture, useCompressedTexture;
 	public static Set<ResourceLocation> allowedIngots;
 
 	public static SimpleNetworkWrapper snw;
 
 	public static final Block ingots = new BlockIngots();
+	public static final Block all = new BlockAll();
 
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -86,6 +87,8 @@ public class Stackable {
 		if (event.getGenericType() == Block.class) {
 			event.getRegistry().register(ingots);
 			GameRegistry.registerTileEntity(TileIngots.class, ingots.getRegistryName().toString());
+			event.getRegistry().register(all);
+			GameRegistry.registerTileEntity(TileAll.class, all.getRegistryName().toString());
 		}
 	}
 
@@ -109,6 +112,20 @@ public class Stackable {
 			for (int y = 0; y < Stackable.perY; y++) {
 				for (int z = 0; z < Stackable.perZ; z++) {
 					for (int x = 0; x < Stackable.perX; x++) {
+						l.add(Pair.of(count, new Vec3i(x, y, z)));
+						count++;
+					}
+				}
+			}
+			return l.stream();
+		}).collect(Collectors.toList())).build();
+		TileAll.maxItemAmount = Stackable.allSize * Stackable.allSize * Stackable.allSize;
+		TileAll.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
+			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
+			int count = 0;
+			for (int y = 0; y < Stackable.allSize; y++) {
+				for (int z = 0; z < Stackable.allSize; z++) {
+					for (int x = 0; x < Stackable.allSize; x++) {
 						l.add(Pair.of(count, new Vec3i(x, y, z)));
 						count++;
 					}

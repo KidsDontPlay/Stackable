@@ -43,7 +43,7 @@ public abstract class TileStackable extends TileEntity {
 			return a != null && b != null && a.getItemDamage() == b.getItemDamage() && a.getItem() == b.getItem();
 		}
 	};
-	public BlockInventory inv = new BlockInventory(this);
+	public PileInventory inv = new PileInventory(this);
 
 	public boolean needSync = true;
 	public boolean isMaster;

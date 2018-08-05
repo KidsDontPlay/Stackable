@@ -23,7 +23,7 @@ import net.minecraftforge.common.property.IExtendedBlockState;
 
 public class IngotModel implements IBakedModel {
 
-	private static List<BakedQuad> brokenQuads, fallBack;
+	public static List<BakedQuad> brokenQuads, fallBack;
 
 	public static void init() {
 		IBlockState cobble = Blocks.COBBLESTONE.getDefaultState();

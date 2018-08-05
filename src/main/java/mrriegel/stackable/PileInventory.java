@@ -1,7 +1,9 @@
 package mrriegel.stackable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang3.Validate;
 
@@ -16,14 +18,14 @@ import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
-public class BlockInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
+public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
 
 	private final TileStackable tile;
 	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileStackable.strategy);
 	List<ItemStack> items = null;
 	boolean threadStarted = false;
 
-	public BlockInventory(TileStackable tile) {
+	public PileInventory(TileStackable tile) {
 		this.tile = tile;
 	}
 
@@ -51,6 +53,7 @@ public class BlockInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			return stack;
 		int canInsert = freeItems(stack);
 		boolean noSpace = false;
+		Set<BlockPos> added = new HashSet<>();
 		while (canInsert < stack.getCount() && !noSpace) {
 			List<TileStackable> l = tile.getAllPileBlocks();
 			if (l.size() >= Stackable.maxPileHeight)
@@ -59,6 +62,7 @@ public class BlockInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			BlockPos neu = last.getPos().up();
 			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState())) {
 				TileStackable n = (TileStackable) tile.getWorld().getTileEntity(neu);
+				added.add(n.getPos());
 				n.masterPos = tile.getPos();
 				canInsert = freeItems(stack);
 			} else
@@ -68,6 +72,9 @@ public class BlockInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 			inventory.addTo(stack.copy(), Math.min(stack.getCount(), canInsert));
 			onChange();
 		}
+		if (simulate)
+			for (BlockPos p : added)
+				tile.getWorld().setBlockToAir(p);
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
 	}
 

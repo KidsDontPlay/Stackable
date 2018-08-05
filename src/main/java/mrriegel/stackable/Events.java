@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -63,7 +64,9 @@ public class Events {
 	@SubscribeEvent
 	public static void rightclick(RightClickBlock event) {
 		EntityPlayer player = event.getEntityPlayer();
-		if (player.isSneaking() && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || TileIngots.validItem1(event.getEntityPlayer().getHeldItemMainhand()))) {
+		ItemStack main = player.getHeldItemMainhand();
+		Block block = TileIngots.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.all : null;
+		if (player.isSneaking() && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || block!=null)) {
 			placed.remove(player.getUniqueID());
 			if (event.getHand() == EnumHand.OFF_HAND) {
 				event.setUseBlock(Result.DENY);
@@ -73,11 +76,11 @@ public class Events {
 			BlockPos newPos = event.getPos().offset(event.getFace());
 			if (player.world.isAirBlock(newPos)) {
 				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
-					if (player.world.setBlockState(newPos, Stackable.ingots.getDefaultState(), 2)) {
-						TileIngots t = (TileIngots) player.world.getTileEntity(newPos);
+					if (player.world.setBlockState(newPos, block.getDefaultState(), 2)) {
+						TileStackable t = (TileStackable) player.world.getTileEntity(newPos);
 						t.isMaster = true;
 						player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
-						Stackable.ingots.onBlockActivated(player.world, newPos, Stackable.ingots.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
+						block.onBlockActivated(player.world, newPos, block.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
 						placed.add(player.getUniqueID());
 					}
 				}

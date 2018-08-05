@@ -2,6 +2,8 @@ package mrriegel.stackable;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,8 +75,10 @@ import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.oredict.OreDictionary;
@@ -89,6 +93,7 @@ public class ClientUtils {
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
+	public static boolean WAILAorTOP = Loader.isModLoaded("waila") || Loader.isModLoaded("theoneprobe");
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
@@ -196,7 +201,7 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void renderText(RenderGameOverlayEvent.Post event) {
-		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL) {
+		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL && !WAILAorTOP) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
@@ -234,6 +239,7 @@ public class ClientUtils {
 	public static void bake(ModelBakeEvent event) {
 		mc = Minecraft.getMinecraft();
 		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotModel());
+		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.all.getRegistryName().toString()), new AllModel());
 	}
 
 	@SubscribeEvent
@@ -338,7 +344,28 @@ public class ClientUtils {
 			return new ArrayList<>(set);
 		} else {
 			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
-			return model.getQuads(null, null, 0);
+			List<BakedQuad> quads = model.getQuads(null, null, 0);
+			if (model.isGui3d())
+				return quads;
+			List<BakedQuad> ret = new ArrayList<>(quads.size() * 6);
+			for (int i = 0; i < quads.size(); i++) {
+				BakedQuad bq = quads.get(i);
+				boolean hard = !"".isEmpty();
+				if (hard) {
+					ret.add(translate(bq, 0, 0, .5f));
+					ret.add(translate(bq, 0, 0, -.5f));
+					ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
+					ret.add(translate(rotate(bq, 90, 0, 1, 0), -.5f, 0, 1));
+					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
+					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, -.5f, 1));
+				} else {
+					BakedQuad rotated = rotate(bq, 270, 1, 0, 0);
+					ret.add(translate(rotated, 0, -.5f, 1));
+					ret.add(translate(rotated, 0, -.4f, 1));
+					ret.add(translate(rotated, 0, -.3f, 1));
+				}
+			}
+			return ret;
 		}
 	}
 
