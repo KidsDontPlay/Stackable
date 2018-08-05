@@ -16,14 +16,14 @@ import net.minecraftforge.common.util.INBTSerializable;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
-public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
+public class BlockInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
 
-	private final TileIngots tile;
-	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileIngots.strategy);
+	private final TileStackable tile;
+	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileStackable.strategy);
 	List<ItemStack> items = null;
 	boolean threadStarted = false;
 
-	public IngotInventory(TileIngots tile) {
+	public BlockInventory(TileStackable tile) {
 		this.tile = tile;
 	}
 
@@ -47,18 +47,18 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	}
 
 	public ItemStack insertItem(ItemStack stack, boolean simulate) {
-		if (!TileIngots.validItem(stack))
+		if (!tile.validItem(stack))
 			return stack;
 		int canInsert = freeItems(stack);
 		boolean noSpace = false;
 		while (canInsert < stack.getCount() && !noSpace) {
-			List<TileIngots> l = tile.getAllIngotBlocks();
+			List<TileStackable> l = tile.getAllPileBlocks();
 			if (l.size() >= Stackable.maxPileHeight)
 				break;
-			TileIngots last = l.get(l.size() - 1);
+			TileStackable last = l.get(l.size() - 1);
 			BlockPos neu = last.getPos().up();
-			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, Stackable.ingots.getDefaultState())) {
-				TileIngots n = (TileIngots) tile.getWorld().getTileEntity(neu);
+			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState())) {
+				TileStackable n = (TileStackable) tile.getWorld().getTileEntity(neu);
 				n.masterPos = tile.getPos();
 				canInsert = freeItems(stack);
 			} else
@@ -72,14 +72,14 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	}
 
 	private void onChange() {
-		for (TileIngots t : tile.getAllIngotBlocks()) {
+		for (TileStackable t : tile.getAllPileBlocks()) {
 			t.needSync = true;
 			t.markDirty();
 			t.box = null;
 			t.positions = null;
-			t.ingots = null;
+			t.items = null;
 			t.raytrace = null;
-			if (!t.isMaster && t.ingotList().stream().allMatch(ItemStack::isEmpty))
+			if (!t.isMaster && t.itemList().stream().allMatch(ItemStack::isEmpty))
 				t.getWorld().setBlockToAir(t.getPos());
 		}
 		if (!threadStarted) {
@@ -92,29 +92,29 @@ public class IngotInventory implements INBTSerializable<NBTTagCompound>, IItemHa
 	}
 
 	private int freeItems(ItemStack stack) {
-		int max = Math.min(stack.getMaxStackSize(), Stackable.itemsPerIngot);
+		int max = Math.min(stack.getMaxStackSize(), tile.itemsPerVisualItem());
 		int free = 0;
-		int occuIngots = 0;
+		int occuItems = 0;
 		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
-			if (TileIngots.strategy.equals(e.getKey(), stack)) {
+			if (TileStackable.strategy.equals(e.getKey(), stack)) {
 				int value = e.getIntValue();
 				while (value > 0) {
 					if (value >= max) {
-						occuIngots++;
+						occuItems++;
 						value -= max;
 					} else {
-						occuIngots++;
+						occuItems++;
 						//TODO think
 						free = value % max;
 						break;
 					}
 				}
 			} else {
-				occuIngots += Math.ceil(e.getIntValue() / (double) (Math.min(e.getKey().getMaxStackSize(), Stackable.itemsPerIngot)));
+				occuItems += Math.ceil(e.getIntValue() / (double) (Math.min(e.getKey().getMaxStackSize(), tile.itemsPerVisualItem())));
 			}
 		}
-		int freeIngots = TileIngots.maxIngotAmount * tile.getAllIngotBlocks().size() - occuIngots;
-		free += max * freeIngots;
+		int freeItems = tile.maxVisualItems() * tile.getAllPileBlocks().size() - occuItems;
+		free += max * freeItems;
 		return free;
 	}
 

@@ -2,10 +2,16 @@ package mrriegel.stackable;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
@@ -15,11 +21,17 @@ import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
+import com.google.common.collect.Streams;
+
+import it.unimi.dsi.fastutil.Hash;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
+import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
@@ -39,6 +51,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumBlockRenderType;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
@@ -68,8 +82,8 @@ import net.minecraftforge.oredict.OreDictionary;
 @EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
 public class ClientUtils {
 
-	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileIngots.strategy);
-	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileIngots.strategy);
+	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileStackable.strategy);
+	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileStackable.strategy);
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
@@ -142,7 +156,7 @@ public class ClientUtils {
 		RayTraceResult rtr = event.getTarget();
 		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
-			if (t instanceof TileIngots) {
+			if (t instanceof TileStackable) {
 				ItemStack h = mc.player.getHeldItemMainhand();
 				if (h.getItem().getToolClasses(h).contains("pickaxe"))
 					return;
@@ -156,12 +170,12 @@ public class ClientUtils {
 				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
-				Pair<Vec3i, AxisAlignedBB> p = ((TileIngots) t).lookingPos(mc.player);
+				Pair<Vec3i, AxisAlignedBB> p = ((TileStackable) t).lookingPos(mc.player);
 				if (p.getRight() != null) {
 					boolean stackdepend = false;
 					float f1, f2, f3;
 					if (stackdepend) {
-						Color c = new Color(color(((TileIngots) t).ingotList().get(TileIngots.coordMap.inverse().get(p.getLeft()))));
+						Color c = new Color(color(((TileStackable) t).itemList().get(((TileStackable) t).getCoordMap().inverse().get(p.getLeft()))));
 						float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
 						if (hsb[2] < .5)
 							f1 = f2 = f3 = 1f;
@@ -186,11 +200,11 @@ public class ClientUtils {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
-				if (t instanceof TileIngots) {
+				if (t instanceof TileStackable) {
 					ItemStack h = mc.player.getHeldItemMainhand();
 					if (h.getItem().getToolClasses(h).contains("pickaxe"))
 						return;
-					ItemStack s = ((TileIngots) t).lookingStack(mc.player);
+					ItemStack s = ((TileStackable) t).lookingStack(mc.player);
 					if (!s.isEmpty()) {
 						ScaledResolution sr = event.getResolution();
 						String text = s.getDisplayName();
@@ -288,6 +302,46 @@ public class ClientUtils {
 		});
 	}
 
+	public static List<BakedQuad> getBakedQuads(ItemStack stack) {
+		if (stack.getItem() instanceof ItemBlock) {
+			Block block = ((ItemBlock) stack.getItem()).getBlock();
+			IBlockState state = block.getStateFromMeta(stack.getMetadata());
+			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
+				return Collections.emptyList();
+			IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(state);
+			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(state, f, 0).stream()).collect(Collectors.toList());
+			Set<IntArrayList> intset = new HashSet<>();
+			Iterator<BakedQuad> it = ret.iterator();
+			while (it.hasNext()) {
+				BakedQuad b = it.next();
+				if (intset.contains(new IntArrayList(b.getVertexData())))
+					it.remove();
+				else
+					intset.add(new IntArrayList(b.getVertexData()));
+
+			}
+			if (true)
+				return ret;
+			ObjectOpenCustomHashSet<BakedQuad> set = new ObjectOpenCustomHashSet<>(new Hash.Strategy<BakedQuad>() {
+
+				@Override
+				public int hashCode(BakedQuad o) {
+					return o == null ? 0 : Arrays.hashCode(o.getVertexData());
+				}
+
+				@Override
+				public boolean equals(BakedQuad a, BakedQuad b) {
+					return a != null && b != null && Arrays.equals(a.getVertexData(), b.getVertexData());
+				}
+			});
+			set.addAll(ret);
+			return new ArrayList<>(set);
+		} else {
+			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
+			return model.getQuads(null, null, 0);
+		}
+	}
+
 	static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {
 		float r = 1f, g = 1f, b = 1f;
 		if (tas == null) {
@@ -359,7 +413,7 @@ public class ClientUtils {
 	static BakedQuad rotate(BakedQuad q, float degree, float x, float y, float z) {
 		Vector3f[] vecs = ClientUtils.getCoords(q);
 		for (int i = 0; i < vecs.length; i++)
-			vecs[i] = rotate(vecs[i],degree, x, y, z);
+			vecs[i] = rotate(vecs[i], degree, x, y, z);
 		return ClientUtils.setCoords(q, vecs);
 	}
 
