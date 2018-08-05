@@ -11,7 +11,9 @@ import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
+import org.lwjgl.util.vector.Vector4f;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
@@ -318,6 +320,81 @@ public class ClientUtils {
 		quads.add(createQuad(tas, vg, vf, ve, vh, r, g, b));
 		quads.add(createQuad(tas, vc, vb, vf, vg, r, g, b));
 		quads.add(createQuad(tas, vd, va, vb, vc, r, g, b));
+	}
+
+	static Vector3f scale(Vector3f v, float x, float y, float z) {
+		Matrix4f m = new Matrix4f();
+		m.scale(new Vector3f(x, y, z));
+		Vector4f v4 = new Vector4f(v.x, v.y, v.z, 1);
+		Matrix4f.transform(m, v4, v4);
+		v = new Vector3f(v4.x, v4.y, v4.z);
+		return v;
+	}
+
+	static Vector3f rotate(Vector3f v, float degree, float x, float y, float z) {
+		Matrix4f m = new Matrix4f();
+		m.rotate((float) Math.toRadians(degree), new Vector3f(x, y, z));
+		Vector4f v4 = new Vector4f(v.x, v.y, v.z, 1);
+		Matrix4f.transform(m, v4, v4);
+		v = new Vector3f(v4.x, v4.y, v4.z);
+		return v;
+	}
+
+	static Vector3f translate(Vector3f v, float x, float y, float z) {
+		Matrix4f m = new Matrix4f();
+		m.translate(new Vector3f(x, y, z));
+		Vector4f v4 = new Vector4f(v.x, v.y, v.z, 1);
+		Matrix4f.transform(m, v4, v4);
+		v = new Vector3f(v4.x, v4.y, v4.z);
+		return v;
+	}
+
+	static BakedQuad scale(BakedQuad q, float x, float y, float z) {
+		Vector3f[] vecs = ClientUtils.getCoords(q);
+		for (int i = 0; i < vecs.length; i++)
+			vecs[i] = scale(vecs[i], x, y, z);
+		return ClientUtils.setCoords(q, vecs);
+	}
+
+	static BakedQuad rotate(BakedQuad q, float degree, float x, float y, float z) {
+		Vector3f[] vecs = ClientUtils.getCoords(q);
+		for (int i = 0; i < vecs.length; i++)
+			vecs[i] = rotate(vecs[i],degree, x, y, z);
+		return ClientUtils.setCoords(q, vecs);
+	}
+
+	static BakedQuad translate(BakedQuad q, float x, float y, float z) {
+		Vector3f[] vecs = ClientUtils.getCoords(q);
+		for (int i = 0; i < vecs.length; i++)
+			vecs[i] = translate(vecs[i], x, y, z);
+		return ClientUtils.setCoords(q, vecs);
+	}
+
+	static Vector3f[] getCoords(BakedQuad quad) {
+		Vector3f[] ret = new Vector3f[4];
+		int[] data = quad.getVertexData();
+		ret[0] = new Vector3f(Float.intBitsToFloat(data[0]), Float.intBitsToFloat(data[1]), Float.intBitsToFloat(data[2]));
+		ret[1] = new Vector3f(Float.intBitsToFloat(data[7]), Float.intBitsToFloat(data[8]), Float.intBitsToFloat(data[9]));
+		ret[2] = new Vector3f(Float.intBitsToFloat(data[14]), Float.intBitsToFloat(data[15]), Float.intBitsToFloat(data[16]));
+		ret[3] = new Vector3f(Float.intBitsToFloat(data[21]), Float.intBitsToFloat(data[22]), Float.intBitsToFloat(data[23]));
+		return ret;
+	}
+
+	static BakedQuad setCoords(BakedQuad quad, Vector3f[] vecs) {
+		int[] data = Arrays.copyOf(quad.getVertexData(), quad.getVertexData().length);
+		data[0] = Float.floatToRawIntBits(vecs[0].x);
+		data[1] = Float.floatToRawIntBits(vecs[0].y);
+		data[2] = Float.floatToRawIntBits(vecs[0].z);
+		data[7] = Float.floatToRawIntBits(vecs[1].x);
+		data[8] = Float.floatToRawIntBits(vecs[1].y);
+		data[9] = Float.floatToRawIntBits(vecs[1].z);
+		data[14] = Float.floatToRawIntBits(vecs[2].x);
+		data[15] = Float.floatToRawIntBits(vecs[2].y);
+		data[16] = Float.floatToRawIntBits(vecs[2].z);
+		data[21] = Float.floatToRawIntBits(vecs[3].x);
+		data[22] = Float.floatToRawIntBits(vecs[3].y);
+		data[23] = Float.floatToRawIntBits(vecs[3].z);
+		return new BakedQuad(data, quad.getTintIndex(), quad.getFace(), quad.getSprite(), quad.shouldApplyDiffuseLighting(), quad.getFormat());
 	}
 
 	private static BakedQuad createQuad(TextureAtlasSprite tas, Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4, float r, float g, float b) {
