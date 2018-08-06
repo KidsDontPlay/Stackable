@@ -37,6 +37,7 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.BlockModelShapes;
+import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
@@ -46,8 +47,10 @@ import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
+import net.minecraft.client.renderer.vertex.VertexFormatElement.EnumUsage;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -96,7 +99,7 @@ public class ClientUtils {
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
-	static TextureAtlasSprite defaultTas, white;
+	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
 	public static boolean WAILAorTOP = Loader.isModLoaded("waila") || Loader.isModLoaded("theoneprobe");
 
@@ -156,8 +159,8 @@ public class ClientUtils {
 	}
 
 	public static void init() {
-//		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
-//		white = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/white");
+		//		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
+		//		white = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/white");
 		IngotModel.init();
 		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
@@ -245,8 +248,7 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void stich(TextureStitchEvent event) {
-		defaultTas=event.getMap().registerSprite(new ResourceLocation("stackable:blocks/ingots"));
-		white=event.getMap().registerSprite(new ResourceLocation("stackable:blocks/white"));
+		defaultTas = event.getMap().registerSprite(new ResourceLocation("stackable:blocks/ingots"));
 	}
 
 	@SubscribeEvent
@@ -335,7 +337,18 @@ public class ClientUtils {
 			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
 				return Collections.emptyList();
 			IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(state);
-			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).collect(Collectors.toList());
+			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).map(bq -> {
+				if (bq.hasTintIndex()) {
+					int color = mc.getBlockColors().colorMultiplier(sstate, mc.world, BlockPos.ORIGIN, bq.getTintIndex());
+					if (EntityRenderer.anaglyphEnable)
+						color = TextureUtil.anaglyphColor(color);
+					color |= 0xFF000000;
+					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
+					data[3] = data[10] = data[17] = data[24] = color;
+					bq = new BakedQuad(data, bq.getTintIndex(), bq.getFace(), bq.getSprite(), bq.shouldApplyDiffuseLighting(), bq.getFormat());
+				}
+				return bq;
+			}).collect(Collectors.toList());
 			Set<IntArrayList> intset = new HashSet<>();
 			Iterator<BakedQuad> it = ret.iterator();
 			while (it.hasNext()) {
@@ -371,6 +384,33 @@ public class ClientUtils {
 			List<BakedQuad> ret = new ArrayList<>(quads.size() * 6);
 			for (int i = 0; i < quads.size(); i++) {
 				BakedQuad bq = quads.get(i);
+				if (bq.hasTintIndex()) {
+					int color = mc.getItemColors().colorMultiplier(stack, bq.getTintIndex());
+					if (EntityRenderer.anaglyphEnable)
+						color = TextureUtil.anaglyphColor(color);
+					color |= 0xFF000000;
+					float a = (color >> 24 & 255) / 255f, //
+							r = (color >> 16 & 255) / 255f, //
+							g = (color >> 8 & 255) / 255f, //
+							b = (color >> 0 & 255) / 255f;
+					UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
+					builder.setTexture(bq.getSprite());
+					VertexFormat format = bq.getFormat();
+					for (int k = 0; k < 4; k++)
+						for (int e = 0; e < format.getElementCount(); e++) {
+							if (format.getElement(e).getUsage() == EnumUsage.COLOR) {
+								builder.put(e, r, g, b, a);
+							} else
+								builder.put(e, 1f, 1f, 1f, 1f);
+						}
+					int[] colorData = builder.build().getVertexData();
+					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
+					data[3] = colorData[3];
+					data[10] = colorData[10];
+					data[17] = colorData[17];
+					data[24] = colorData[24];
+					bq = new BakedQuad(data, bq.getTintIndex(), bq.getFace(), bq.getSprite(), bq.shouldApplyDiffuseLighting(), bq.getFormat());
+				}
 				boolean hard = "".isEmpty();
 				if (hard) {
 					//south
@@ -386,11 +426,8 @@ public class ClientUtils {
 					//up
 					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
 
-					TextureAtlasSprite tas = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.GLASS_PANE.getDefaultState()).getParticleTexture();
-					tas = white;
-					tas=ModelLoader.White.INSTANCE;
-					tas=defaultTas;
-					float r, g, b, a =1f;
+					TextureAtlasSprite tas = defaultTas;
+					float r, g, b, a = 1f;
 					Color col = new Color(color(stack));
 					float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 					col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
