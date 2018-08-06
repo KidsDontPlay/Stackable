@@ -8,13 +8,16 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.ImmutableBiMap;
 
 import net.minecraft.block.Block;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.Vec3i;
+import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -51,6 +54,8 @@ public class Stackable {
 	public static final Block ingots = new BlockIngots();
 	public static final Block all = new BlockAll();
 
+	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, MODID);
+
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		Configuration config = new Configuration(event.getSuggestedConfigurationFile());
@@ -69,6 +74,7 @@ public class Stackable {
 		generateConstants();
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
+		snw.registerMessage(MessagePlaceKey.class, MessagePlaceKey.class, 1, Side.SERVER);
 	}
 
 	@Mod.EventHandler

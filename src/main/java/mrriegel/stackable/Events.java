@@ -28,6 +28,8 @@ import net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent;
 @EventBusSubscriber(modid = Stackable.MODID)
 public class Events {
 
+	public static boolean placeKeyDown = false;
+
 	//Sync
 	@SubscribeEvent
 	public static void tick(WorldTickEvent event) {
@@ -66,7 +68,7 @@ public class Events {
 		EntityPlayer player = event.getEntityPlayer();
 		ItemStack main = player.getHeldItemMainhand();
 		Block block = TileIngots.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.all : null;
-		if (player.isSneaking() && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || block!=null)) {
+		if (placeKeyDown && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || block != null)) {
 			placed.remove(player.getUniqueID());
 			if (event.getHand() == EnumHand.OFF_HAND) {
 				event.setUseBlock(Result.DENY);

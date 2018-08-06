@@ -2,8 +2,6 @@ package mrriegel.stackable;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,6 +17,7 @@ import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.input.Keyboard;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
@@ -43,6 +42,7 @@ import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
@@ -67,6 +67,7 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.IWorldEventListener;
 import net.minecraft.world.World;
+import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -75,10 +76,11 @@ import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent.ClientTickEvent;
+import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.oredict.OreDictionary;
@@ -154,6 +156,13 @@ public class ClientUtils {
 		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
 		IngotModel.init();
 		brokenBlocks.defaultReturnValue(-1);
+		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
+	}
+
+	@SubscribeEvent
+	public static void keyInput(KeyInputEvent event) {
+		if (Keyboard.getEventKey() == Stackable.PLACE_KEY.getKeyCode())
+			Stackable.snw.sendToServer(new MessagePlaceKey(Keyboard.getEventKeyState()));
 	}
 
 	@SubscribeEvent
@@ -201,7 +210,7 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void renderText(RenderGameOverlayEvent.Post event) {
-		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL && !WAILAorTOP) {
+		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL /*&& !WAILAorTOP*/) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
@@ -344,9 +353,11 @@ public class ClientUtils {
 			return new ArrayList<>(set);
 		} else {
 			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
+			model = ForgeHooksClient.handleCameraTransforms(model, TransformType.GUI, false);
 			List<BakedQuad> quads = model.getQuads(null, null, 0);
 			if (model.isGui3d())
 				return quads;
+			//						System.out.println(stack+" "+quads.size());
 			List<BakedQuad> ret = new ArrayList<>(quads.size() * 6);
 			for (int i = 0; i < quads.size(); i++) {
 				BakedQuad bq = quads.get(i);
