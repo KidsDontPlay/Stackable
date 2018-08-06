@@ -82,6 +82,9 @@ public class Stackable {
 		if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
 			ClientUtils.init();
 		}
+		//TODO
+		//block lights if item lights
+		//iitemcolor/blockcolor
 	}
 
 	@Mod.EventHandler

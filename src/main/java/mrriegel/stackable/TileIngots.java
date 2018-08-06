@@ -80,4 +80,9 @@ public class TileIngots extends TileStackable {
 		return SoundEvents.BLOCK_METAL_PLACE;
 	}
 
+	@Override
+	public Vec3i getDimension() {
+		return new Vec3i(Stackable.perX, Stackable.perY, Stackable.perZ);
+	}
+
 }

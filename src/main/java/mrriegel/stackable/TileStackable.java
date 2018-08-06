@@ -3,6 +3,7 @@ package mrriegel.stackable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
@@ -35,12 +36,24 @@ public abstract class TileStackable extends TileEntity {
 
 		@Override
 		public int hashCode(ItemStack o) {
-			return o == null ? 0 : (o.getItemDamage() + "" + o.getItem().getRegistryName()).hashCode();
+			if (o == null)
+				return 0;
+			int hash = 31;
+			hash ^= o.getItem().getRegistryName().hashCode();
+			hash ^= o.getMetadata();
+			hash ^= Objects.hashCode(o.getTagCompound());
+			return hash;
 		}
 
 		@Override
 		public boolean equals(ItemStack a, ItemStack b) {
-			return a != null && b != null && a.getItemDamage() == b.getItemDamage() && a.getItem() == b.getItem();
+			if (a == null || b == null)
+				return false;
+			if (a.getItem() != b.getItem())
+				return false;
+			if (a.getMetadata() != b.getMetadata())
+				return false;
+			return Objects.equals(a.getTagCompound(), b.getTagCompound());
 		}
 	};
 	public PileInventory inv = new PileInventory(this);
@@ -147,11 +160,18 @@ public abstract class TileStackable extends TileEntity {
 	}
 
 	public abstract int maxVisualItems();
+
 	public abstract List<AxisAlignedBB> uncachedItemBoxes(List<ItemStack> itemList);
+
 	public abstract BiMap<Integer, Vec3i> getCoordMap();
+
 	public abstract boolean validItem(ItemStack stack);
+
 	public abstract int itemsPerVisualItem();
+
 	public abstract SoundEvent placeSound(ItemStack stack);
+
+	public abstract Vec3i getDimension();
 
 	public List<TileStackable> getAllPileBlocks() {
 		List<TileStackable> l = new ArrayList<>();
@@ -167,7 +187,7 @@ public abstract class TileStackable extends TileEntity {
 				continue;
 			}
 			TileEntity t = world.getTileEntity(p);
-			if (t!=null&&t.getClass() == masterClass) {
+			if (t != null && t.getClass() == masterClass) {
 				TileStackable tile = (TileStackable) t;
 				if (!tile.isMaster && master.getPos().equals(tile.masterPos))
 					l.add(tile);

@@ -71,4 +71,9 @@ public class TileAll extends TileStackable {
 		return SoundEvents.BLOCK_CLOTH_PLACE;
 	}
 
+	@Override
+	public Vec3i getDimension() {
+		return new Vec3i(Stackable.allSize, Stackable.allSize, Stackable.allSize);
+	}
+
 }

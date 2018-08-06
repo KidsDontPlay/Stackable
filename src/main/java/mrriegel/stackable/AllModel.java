@@ -24,6 +24,8 @@ public class AllModel implements IBakedModel {
 
 	@Override
 	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
+		if(!true)
+		return Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.LEAVES.getDefaultState()).getQuads(null, side, 0);
 		if (side != null)
 			return Collections.emptyList();
 		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];

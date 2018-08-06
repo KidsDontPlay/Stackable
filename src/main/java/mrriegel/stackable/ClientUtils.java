@@ -41,6 +41,7 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.BakedQuadRetextured;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
@@ -55,6 +56,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.SoundEvent;
@@ -73,6 +75,7 @@ import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
+import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
@@ -93,7 +96,7 @@ public class ClientUtils {
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	private static Minecraft mc;
-	static TextureAtlasSprite defaultTas;
+	static TextureAtlasSprite defaultTas, white;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
 	public static boolean WAILAorTOP = Loader.isModLoaded("waila") || Loader.isModLoaded("theoneprobe");
 
@@ -153,7 +156,8 @@ public class ClientUtils {
 	}
 
 	public static void init() {
-		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
+//		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
+//		white = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/white");
 		IngotModel.init();
 		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
@@ -241,7 +245,8 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void stich(TextureStitchEvent event) {
-		event.getMap().registerSprite(new ResourceLocation("stackable:blocks/ingots"));
+		defaultTas=event.getMap().registerSprite(new ResourceLocation("stackable:blocks/ingots"));
+		white=event.getMap().registerSprite(new ResourceLocation("stackable:blocks/white"));
 	}
 
 	@SubscribeEvent
@@ -320,11 +325,17 @@ public class ClientUtils {
 	public static List<BakedQuad> getBakedQuads(ItemStack stack) {
 		if (stack.getItem() instanceof ItemBlock) {
 			Block block = ((ItemBlock) stack.getItem()).getBlock();
-			IBlockState state = block.getStateFromMeta(stack.getMetadata());
+			IBlockState state = null;
+			try {
+				state = block.getStateForPlacement(mc.world, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, stack.getMetadata(), mc.player, EnumHand.MAIN_HAND);
+			} catch (Exception e) {
+				state = block.getStateFromMeta(stack.getMetadata());
+			}
+			IBlockState sstate = state;
 			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
 				return Collections.emptyList();
 			IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(state);
-			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(state, f, 0).stream()).collect(Collectors.toList());
+			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).collect(Collectors.toList());
 			Set<IntArrayList> intset = new HashSet<>();
 			Iterator<BakedQuad> it = ret.iterator();
 			while (it.hasNext()) {
@@ -353,22 +364,87 @@ public class ClientUtils {
 			return new ArrayList<>(set);
 		} else {
 			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
+			if (model.isGui3d())
+				return model.getQuads(null, null, 0);
 			model = ForgeHooksClient.handleCameraTransforms(model, TransformType.GUI, false);
 			List<BakedQuad> quads = model.getQuads(null, null, 0);
-			if (model.isGui3d())
-				return quads;
-			//						System.out.println(stack+" "+quads.size());
 			List<BakedQuad> ret = new ArrayList<>(quads.size() * 6);
 			for (int i = 0; i < quads.size(); i++) {
 				BakedQuad bq = quads.get(i);
-				boolean hard = !"".isEmpty();
+				boolean hard = "".isEmpty();
 				if (hard) {
+					//south
 					ret.add(translate(bq, 0, 0, .5f));
-					ret.add(translate(bq, 0, 0, -.5f));
+					//north
+					ret.add(translate(rotate(bq, 180, 0, 1, 0), 1, 0, .5f));
+					//east
 					ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
-					ret.add(translate(rotate(bq, 90, 0, 1, 0), -.5f, 0, 1));
+					//west
+					ret.add(translate(rotate(bq, 270, 0, 1, 0), .5f, 0, 0));
+					//down
+					ret.add(translate(rotate(bq, 90, 1, 0, 0), 0, .5f, 0));
+					//up
 					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
-					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, -.5f, 1));
+
+					TextureAtlasSprite tas = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.GLASS_PANE.getDefaultState()).getParticleTexture();
+					tas = white;
+					tas=ModelLoader.White.INSTANCE;
+					tas=defaultTas;
+					float r, g, b, a =1f;
+					Color col = new Color(color(stack));
+					float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
+					col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
+					r = col.getRed() / 255f;
+					g = col.getGreen() / 255f;
+					b = col.getBlue() / 255f;
+					//west
+					ret.add(createQuad(tas, //
+							0, 1, 0, //
+							0, 0, 0, //
+							0, 0, 1, //
+							0, 1, 1, //
+							r, g, b, a));
+					//east
+					ret.add(createQuad(tas, //
+							1, 1, 1, //
+							1, 0, 1, //
+							1, 0, 0, //
+							1, 1, 0, //
+							r, g, b, a));
+					//down
+					ret.add(createQuad(tas, //
+							1, 0, 1, //
+							0, 0, 1, //
+							0, 0, 0, //
+							1, 0, 0, //
+							r, g, b, a));
+					//up
+					ret.add(createQuad(tas, //
+							1, 1, 0, //
+							0, 1, 0, //
+							0, 1, 1, //
+							1, 1, 1, //
+							r, g, b, a));
+					//south
+					ret.add(createQuad(tas, //
+							1, 1, 1, //
+							0, 1, 1, //
+							0, 0, 1, //
+							1, 0, 1, //
+							r, g, b, a));
+					ret.add(createQuad(tas, //
+							1, 0, 0, //
+							0, 0, 0, //
+							0, 1, 0, //
+							1, 1, 0, //
+							r, g, b, a));
+
+					//					ret.add(translate(bq, 0, 0, .5f));
+					//					ret.add(translate(bq, 0, 0, -.5f));
+					//					ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
+					//					ret.add(translate(rotate(bq, 90, 0, 1, 0), -.5f, 0, 1));
+					//					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
+					//					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, -.5f, 1));
 				} else {
 					BakedQuad rotated = rotate(bq, 270, 1, 0, 0);
 					ret.add(translate(rotated, 0, -.5f, 1));
@@ -404,14 +480,14 @@ public class ClientUtils {
 				vg = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
 				vh = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ);
 		//bottom
-		quads.add(createQuad(tas, va, ve, vf, vb, r, g, b));
+		quads.add(createQuad(tas, va, ve, vf, vb, r, g, b, 1));
 		//top
-		quads.add(createQuad(tas, vh, vd, vc, vg, r, g, b));
+		quads.add(createQuad(tas, vh, vd, vc, vg, r, g, b, 1));
 		//sides NESW
-		quads.add(createQuad(tas, vh, ve, va, vd, r, g, b));
-		quads.add(createQuad(tas, vg, vf, ve, vh, r, g, b));
-		quads.add(createQuad(tas, vc, vb, vf, vg, r, g, b));
-		quads.add(createQuad(tas, vd, va, vb, vc, r, g, b));
+		quads.add(createQuad(tas, vh, ve, va, vd, r, g, b, 1));
+		quads.add(createQuad(tas, vg, vf, ve, vh, r, g, b, 1));
+		quads.add(createQuad(tas, vc, vb, vf, vg, r, g, b, 1));
+		quads.add(createQuad(tas, vd, va, vb, vc, r, g, b, 1));
 	}
 
 	static Vector3f scale(Vector3f v, float x, float y, float z) {
@@ -489,11 +565,11 @@ public class ClientUtils {
 		return new BakedQuad(data, quad.getTintIndex(), quad.getFace(), quad.getSprite(), quad.shouldApplyDiffuseLighting(), quad.getFormat());
 	}
 
-	private static BakedQuad createQuad(TextureAtlasSprite tas, Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4, float r, float g, float b) {
-		return createQuad(tas, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, r, g, b);
+	private static BakedQuad createQuad(TextureAtlasSprite tas, Vector3f v1, Vector3f v2, Vector3f v3, Vector3f v4, float r, float g, float b, float a) {
+		return createQuad(tas, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z, v4.x, v4.y, v4.z, r, g, b, a);
 	}
 
-	private static BakedQuad createQuad(TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b) {
+	private static BakedQuad createQuad(TextureAtlasSprite tas, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a) {
 		UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
 		builder.setTexture(tas);
 		Vec3d normal = new Vec3d(x3, y3, z3).subtract(new Vec3d(x2, y2, z2)).crossProduct(new Vec3d(x1, y1, z1).subtract(new Vec3d(x2, y2, z2))).normalize();
@@ -533,14 +609,14 @@ public class ClientUtils {
 				p4.y = y4 * 16;
 			}
 		}
-		putVertex(tas, builder, normal, x1, y1, z1, p1.x, p1.y, r, g, b);
-		putVertex(tas, builder, normal, x2, y2, z2, p2.x, p2.y, r, g, b);
-		putVertex(tas, builder, normal, x3, y3, z3, p3.x, p3.y, r, g, b);
-		putVertex(tas, builder, normal, x4, y4, z4, p4.x, p4.y, r, g, b);
+		putVertex(tas, builder, normal, x1, y1, z1, p1.x, p1.y, r, g, b, a);
+		putVertex(tas, builder, normal, x2, y2, z2, p2.x, p2.y, r, g, b, a);
+		putVertex(tas, builder, normal, x3, y3, z3, p3.x, p3.y, r, g, b, a);
+		putVertex(tas, builder, normal, x4, y4, z4, p4.x, p4.y, r, g, b, a);
 		return builder.build();
 	}
 
-	private static void putVertex(TextureAtlasSprite sprite, UnpackedBakedQuad.Builder builder, Vec3d normal, float x, float y, float z, float u, float v, float r, float g, float b) {
+	private static void putVertex(TextureAtlasSprite sprite, UnpackedBakedQuad.Builder builder, Vec3d normal, float x, float y, float z, float u, float v, float r, float g, float b, float a) {
 		VertexFormat format = DefaultVertexFormats.ITEM;
 		for (int e = 0; e < format.getElementCount(); e++) {
 			switch (format.getElement(e).getUsage()) {
@@ -548,7 +624,7 @@ public class ClientUtils {
 				builder.put(e, x, y, z, 1f);
 				break;
 			case COLOR:
-				builder.put(e, r, g, b, 1f);
+				builder.put(e, r, g, b, a);
 				break;
 			case UV:
 				if (format.getElement(e).getIndex() == 0) {
