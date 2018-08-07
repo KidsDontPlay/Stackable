@@ -57,7 +57,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		Set<BlockPos> added = new HashSet<>();
 		while (canInsert < stack.getCount() && !noSpace) {
 			List<TileStackable> l = tile.getAllPileBlocks();
-			if (l.size() >= Stackable.maxPileHeight)
+			if (l.size() >= tile.maxPileHeight())
 				break;
 			TileStackable last = l.get(l.size() - 1);
 			BlockPos neu = last.getPos().up();
@@ -77,6 +77,19 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 			for (BlockPos p : added)
 				tile.getWorld().setBlockToAir(p);
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
+	}
+
+	public void cycle(boolean forward) {
+		if (!forward) {
+			ItemStack s = inventory.firstKey();
+			int val = inventory.removeInt(s);
+			inventory.putAndMoveToLast(s, val);
+		} else {
+			ItemStack s = inventory.lastKey();
+			int val = inventory.removeInt(s);
+			inventory.putAndMoveToFirst(s, val);
+		}
+		onChange();
 	}
 
 	private void onChange() {

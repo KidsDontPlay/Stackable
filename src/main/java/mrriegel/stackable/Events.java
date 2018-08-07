@@ -3,24 +3,18 @@ package mrriegel.stackable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
-import mrriegel.stackable.tile.TileIngotPile;
 import mrriegel.stackable.tile.TileStackable;
-import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.Event.Result;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -29,8 +23,6 @@ import net.minecraftforge.fml.common.gameevent.TickEvent.WorldTickEvent;
 
 @EventBusSubscriber(modid = Stackable.MODID)
 public class Events {
-
-	public static boolean placeKeyDown = false;
 
 	//Sync
 	@SubscribeEvent
@@ -58,38 +50,6 @@ public class Events {
 				});
 			} catch (Exception e) {
 				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private static Set<UUID> placed = new HashSet<>();
-
-	//set new block
-	@SubscribeEvent
-	public static void rightclick(RightClickBlock event) {
-		EntityPlayer player = event.getEntityPlayer();
-		ItemStack main = player.getHeldItemMainhand();
-		Block block = TileIngotPile.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.any : null;
-		if (placeKeyDown && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || block != null)) {
-			placed.remove(player.getUniqueID());
-			if (event.getHand() == EnumHand.OFF_HAND) {
-				event.setUseBlock(Result.DENY);
-				event.setCanceled(true);
-				return;
-			}
-			BlockPos newPos = event.getPos().offset(event.getFace());
-			if (player.world.isAirBlock(newPos)) {
-				if (!player.world.isRemote && event.getHand() == EnumHand.MAIN_HAND) {
-					if (player.world.setBlockState(newPos, block.getDefaultState(), 2)) {
-						TileStackable t = (TileStackable) player.world.getTileEntity(newPos);
-						t.isMaster = true;
-						player.world.notifyNeighborsOfStateChange(newPos, t.getBlockType(), true);
-						block.onBlockActivated(player.world, newPos, block.getDefaultState(), player, event.getHand(), event.getFace(), 0, 0, 0);
-						placed.add(player.getUniqueID());
-					}
-				}
-				event.setUseBlock(Result.DENY);
-				event.setCanceled(true);
 			}
 		}
 	}

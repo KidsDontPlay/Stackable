@@ -16,10 +16,12 @@ public class MessageConfigSync implements IMessage, IMessageHandler<MessageConfi
 	public IMessage onMessage(MessageConfigSync message, MessageContext ctx) {
 		FMLCommonHandler.instance().getWorldThread(ctx.netHandler).addScheduledTask(() -> {
 			nbt = message.nbt;
-			Stackable.itemsPerIngot = nbt.getInteger("a");
-			Stackable.perX = nbt.getInteger("x");
-			Stackable.perY = nbt.getInteger("y");
-			Stackable.perZ = nbt.getInteger("z");
+			Stackable.itemsPerItemI = nbt.getInteger("iii");
+			Stackable.sizeX = nbt.getInteger("x");
+			Stackable.sizeY = nbt.getInteger("y");
+			Stackable.sizeZ = nbt.getInteger("z");
+			Stackable.itemsPerItemA = nbt.getInteger("iia");
+			Stackable.size = nbt.getInteger("s");
 			Stackable.generateConstants();
 		});
 		return null;

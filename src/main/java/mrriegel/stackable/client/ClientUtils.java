@@ -32,7 +32,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
 import mrriegel.stackable.block.BlockPile;
-import mrriegel.stackable.message.MessagePlaceKey;
+import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
@@ -100,6 +100,7 @@ public class ClientUtils {
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, Stackable.NAME);
+	public static final KeyBinding CYCLE_KEY = new KeyBinding("key.stackable.cycle", KeyConflictContext.IN_GAME, Keyboard.KEY_C, Stackable.NAME);
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
@@ -174,13 +175,21 @@ public class ClientUtils {
 		PileModel.init();
 		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(PLACE_KEY);
+		ClientRegistry.registerKeyBinding(CYCLE_KEY);
 		ClientRegistry.bindTileEntitySpecialRenderer(TileAnyPile.class, new TESRAnyPile());
 	}
 
 	@SubscribeEvent
 	public static void keyInput(KeyInputEvent event) {
-		if (Keyboard.getEventKey() == PLACE_KEY.getKeyCode())
-			Stackable.snw.sendToServer(new MessagePlaceKey(Keyboard.getEventKeyState()));
+		RayTraceResult rtr = mc.objectMouseOver;
+		if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
+			if (PLACE_KEY.isPressed()) {
+				if (rtr.sideHit == EnumFacing.UP)
+					Stackable.snw.sendToServer(new MessageKey((byte) 0, rtr.getBlockPos()));
+			} else if (CYCLE_KEY.isPressed()) {
+				Stackable.snw.sendToServer(new MessageKey((byte) 1, rtr.getBlockPos()));
+			}
+		}
 	}
 
 	@SubscribeEvent
@@ -434,7 +443,7 @@ public class ClientUtils {
 					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
 
 					TextureAtlasSprite tas = defaultTas;
-					float r=1f, g=1f, b=1f, a = 1f;
+					float r = 1f, g = 1f, b = 1f, a = 1f;
 					Color col = new Color(color(stack));
 					float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 					col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));

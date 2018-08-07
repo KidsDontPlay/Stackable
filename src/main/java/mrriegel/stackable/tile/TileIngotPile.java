@@ -41,11 +41,11 @@ public class TileIngotPile extends TileStackable {
 	public List<AxisAlignedBB> uncachedItemBoxes(List<ItemStack> itemList) {
 		List<AxisAlignedBB> lis = new ArrayList<>();
 		int count = 0;
-		double xs = 1. / Stackable.perX, ys = 1. / Stackable.perY, zs = 1. / Stackable.perZ;
+		double xs = 1. / Stackable.sizeX, ys = 1. / Stackable.sizeY, zs = 1. / Stackable.sizeZ;
 		Vec3d vecEven = new Vec3d(xs, ys, zs), vecUneven = new Vec3d(zs, ys, xs);
-		mian: for (int y = 0; y < Stackable.perY; y++) {
-			for (int z = 0; z < Stackable.perZ; z++) {
-				for (int x = 0; x < Stackable.perX; x++) {
+		mian: for (int y = 0; y < Stackable.sizeY; y++) {
+			for (int z = 0; z < Stackable.sizeZ; z++) {
+				for (int x = 0; x < Stackable.sizeX; x++) {
 					ItemStack s = itemList.get(count);
 					if (s.isEmpty())
 						break mian;
@@ -73,7 +73,7 @@ public class TileIngotPile extends TileStackable {
 
 	@Override
 	public int itemsPerVisualItem() {
-		return Stackable.itemsPerIngot;
+		return Stackable.itemsPerItemI;
 	}
 
 	@Override
@@ -83,7 +83,12 @@ public class TileIngotPile extends TileStackable {
 
 	@Override
 	public Vec3i getDimension() {
-		return new Vec3i(Stackable.perX, Stackable.perY, Stackable.perZ);
+		return new Vec3i(Stackable.sizeX, Stackable.sizeY, Stackable.sizeZ);
+	}
+
+	@Override
+	public int maxPileHeight() {
+		return Stackable.maxPileHeightI;
 	}
 
 }

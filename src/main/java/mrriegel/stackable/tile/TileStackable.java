@@ -173,6 +173,8 @@ public abstract class TileStackable extends TileEntity {
 	public abstract SoundEvent placeSound(ItemStack stack);
 
 	public abstract Vec3i getDimension();
+	
+	public abstract int maxPileHeight();
 
 	public List<TileStackable> getAllPileBlocks() {
 		List<TileStackable> l = new ArrayList<>();

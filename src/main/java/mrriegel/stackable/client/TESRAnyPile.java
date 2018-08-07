@@ -24,7 +24,7 @@ public class TESRAnyPile extends TileEntitySpecialRenderer<TileAnyPile> {
 		List<ItemStack> stacks = te.itemList();
 		List<AxisAlignedBB> aabbs = te.itemBoxes();
 		int size = Math.min(stacks.size(), aabbs.size());
-		float f = 1f / Stackable.allSize;
+		float f = 1f / Stackable.size;
 		float ff = f * .9f;
 		float add = f - ff;
 		GlStateManager.pushMatrix();

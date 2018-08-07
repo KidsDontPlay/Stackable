@@ -28,11 +28,11 @@ public class TileAnyPile extends TileStackable {
 	public List<AxisAlignedBB> uncachedItemBoxes(List<ItemStack> itemList) {
 		List<AxisAlignedBB> lis = new ArrayList<>();
 		int count = 0;
-		double d = 1. / Stackable.allSize;
+		double d = 1. / Stackable.size;
 		Vec3d vec = new Vec3d(d, d, d);
-		mian: for (int y = 0; y < Stackable.allSize; y++) {
-			for (int z = 0; z < Stackable.allSize; z++) {
-				for (int x = 0; x < Stackable.allSize; x++) {
+		mian: for (int y = 0; y < Stackable.size; y++) {
+			for (int z = 0; z < Stackable.size; z++) {
+				for (int x = 0; x < Stackable.size; x++) {
 					ItemStack s = itemList.get(count);
 					if (s.isEmpty())
 						break mian;
@@ -59,7 +59,7 @@ public class TileAnyPile extends TileStackable {
 
 	@Override
 	public int itemsPerVisualItem() {
-		return 1;
+		return Stackable.itemsPerItemA;
 	}
 
 	@Override
@@ -74,7 +74,12 @@ public class TileAnyPile extends TileStackable {
 
 	@Override
 	public Vec3i getDimension() {
-		return new Vec3i(Stackable.allSize, Stackable.allSize, Stackable.allSize);
+		return new Vec3i(Stackable.size, Stackable.size, Stackable.size);
+	}
+
+	@Override
+	public int maxPileHeight() {
+		return Stackable.maxPileHeightA;
 	}
 
 }

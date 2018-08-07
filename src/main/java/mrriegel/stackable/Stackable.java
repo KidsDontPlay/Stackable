@@ -1,14 +1,18 @@
 package mrriegel.stackable;
 
+import static net.minecraftforge.common.config.Configuration.CATEGORY_CLIENT;
+import static net.minecraftforge.common.config.Configuration.CATEGORY_GENERAL;
+import static net.minecraftforge.common.config.Configuration.NEW_LINE;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.ImmutableBiMap;
 
@@ -16,15 +20,13 @@ import mrriegel.stackable.block.BlockAnyPile;
 import mrriegel.stackable.block.BlockIngotPile;
 import mrriegel.stackable.client.ClientUtils;
 import mrriegel.stackable.message.MessageConfigSync;
-import mrriegel.stackable.message.MessagePlaceKey;
+import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TileIngotPile;
 import net.minecraft.block.Block;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.Vec3i;
-import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -52,7 +54,7 @@ public class Stackable {
 	public static final String MODID = "stackable";
 
 	//config
-	public static int itemsPerIngot, perX, perY, perZ, overlay, maxPileHeight, allSize = 4;
+	public static int itemsPerItemI, itemsPerItemA, sizeX, sizeY, sizeZ, overlay, maxPileHeightI, maxPileHeightA, size;
 	public static boolean useBlockTexture, useCompressedTexture;
 	public static Set<ResourceLocation> allowedIngots;
 
@@ -64,24 +66,26 @@ public class Stackable {
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		Configuration config = new Configuration(event.getSuggestedConfigurationFile());
-		itemsPerIngot = config.getInt("itemsPerIngot", Configuration.CATEGORY_GENERAL, 4, 1, 64, "Items per visual ingot");
-		String name = Configuration.CATEGORY_GENERAL + ".ingotsPerBlock";
-		perX = config.getInt("x", name, 6, 1, 24, "");
-		perY = config.getInt("y", name, 8, 1, 24, "");
-		perZ = config.getInt("z", name, 2, 1, 16, "");
-		useBlockTexture = config.getBoolean("useBlockTexture", Configuration.CATEGORY_CLIENT, true, "Use textures from blocks for ingots (e.g. iron block texture for iron ingot).");
-		useCompressedTexture = config.getBoolean("useCompressedTexture", Configuration.CATEGORY_CLIENT, true, "Use compressed textures.");
-		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", Configuration.CATEGORY_GENERAL, new String[] {}, "Items that are allowed to be added to the ingot block as well. (Notation: MODID:ITEMNAME)")).map(ResourceLocation::new).collect(Collectors.toSet());
-		overlay = config.getInt("overlay", Configuration.CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + Configuration.NEW_LINE + "1 - Overlay visible while sneaking" + Configuration.NEW_LINE + "2 - Overlay always visible");
-		maxPileHeight = config.getInt("maxPileHeight", Configuration.CATEGORY_GENERAL, 30, 1, 512, "Maximum pile height.");
+		itemsPerItemI = config.getInt("itemsPerItem", CATEGORY_GENERAL + ".ingot", 4, 1, 64, "Items per visual item");
+		sizeX = config.getInt("sizeX", CATEGORY_GENERAL + ".ingot", 6, 1, 24, "");
+		sizeY = config.getInt("sizeY", CATEGORY_GENERAL + ".ingot", 8, 1, 24, "");
+		sizeZ = config.getInt("sizeZ", CATEGORY_GENERAL + ".ingot", 2, 1, 24, "");
+		allowedIngots = Arrays.stream(config.getStringList("allowedIngots", CATEGORY_GENERAL + ".ingot", new String[] {}, "Items that are allowed to be added to the ingot block as well. (Notation: MODID:ITEMNAME)")).map(ResourceLocation::new).collect(Collectors.toSet());
+		maxPileHeightI = config.getInt("maxPileHeight", CATEGORY_GENERAL + ".ingot", 25, 1, 200, "Maximum pile height (in blocks)");
+		itemsPerItemA = config.getInt("itemsPerItem", CATEGORY_GENERAL + ".any", 4, 1, 64, "Items per visual item");
+		size = config.getInt("size", CATEGORY_GENERAL + ".any", 4, 1, 24, "");
+		maxPileHeightA = config.getInt("maxPileHeight", CATEGORY_GENERAL + ".any", 25, 1, 200, "Maximum pile height (in blocks)");
+
+		useBlockTexture = config.getBoolean("useBlockTexture", CATEGORY_CLIENT + ".ingot", true, "Use textures from blocks for ingots (e.g. iron block texture for iron ingot).");
+		useCompressedTexture = config.getBoolean("useCompressedTexture", CATEGORY_CLIENT + ".ingot", true, "Use compressed textures.");
+		overlay = config.getInt("overlay", CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + NEW_LINE + "1 - Overlay visible while sneaking" + NEW_LINE + "2 - Overlay always visible");
+
 		if (config.hasChanged())
 			config.save();
 		generateConstants();
-		mehr config
-		set pile on keypress without click
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
-		snw.registerMessage(MessagePlaceKey.class, MessagePlaceKey.class, 1, Side.SERVER);
+		snw.registerMessage(MessageKey.class, MessageKey.class, 1, Side.SERVER);
 	}
 
 	@Mod.EventHandler
@@ -90,7 +94,6 @@ public class Stackable {
 			ClientUtils.init();
 		}
 		//TODO
-		//block lights if item lights
 		//waila support (disable overlay when waila is loaded, add amount to tooltip)
 	}
 
@@ -112,22 +115,24 @@ public class Stackable {
 	public static void join(EntityJoinWorldEvent event) {
 		if (event.getEntity() instanceof EntityPlayerMP /*&& event.getEntity().getServer().isDedicatedServer()*/) {
 			MessageConfigSync p = new MessageConfigSync();
-			p.nbt.setInteger("a", Stackable.itemsPerIngot);
-			p.nbt.setInteger("x", Stackable.perX);
-			p.nbt.setInteger("y", Stackable.perY);
-			p.nbt.setInteger("z", Stackable.perZ);
+			p.nbt.setInteger("iii", Stackable.itemsPerItemI);
+			p.nbt.setInteger("x", Stackable.sizeX);
+			p.nbt.setInteger("y", Stackable.sizeY);
+			p.nbt.setInteger("z", Stackable.sizeZ);
+			p.nbt.setInteger("iia", Stackable.itemsPerItemA);
+			p.nbt.setInteger("s", Stackable.size);
 			snw.sendTo(p, (EntityPlayerMP) event.getEntity());
 		}
 	}
 
 	public static void generateConstants() {
-		TileIngotPile.maxIngotAmount = Stackable.perX * Stackable.perY * Stackable.perZ;
+		TileIngotPile.maxIngotAmount = Stackable.sizeX * Stackable.sizeY * Stackable.sizeZ;
 		TileIngotPile.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
 			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
 			int count = 0;
-			for (int y = 0; y < Stackable.perY; y++) {
-				for (int z = 0; z < Stackable.perZ; z++) {
-					for (int x = 0; x < Stackable.perX; x++) {
+			for (int y = 0; y < Stackable.sizeY; y++) {
+				for (int z = 0; z < Stackable.sizeZ; z++) {
+					for (int x = 0; x < Stackable.sizeX; x++) {
 						l.add(Pair.of(count, new Vec3i(x, y, z)));
 						count++;
 					}
@@ -135,13 +140,13 @@ public class Stackable {
 			}
 			return l.stream();
 		}).collect(Collectors.toList())).build();
-		TileAnyPile.maxItemAmount = Stackable.allSize * Stackable.allSize * Stackable.allSize;
+		TileAnyPile.maxItemAmount = Stackable.size * Stackable.size * Stackable.size;
 		TileAnyPile.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
 			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
 			int count = 0;
-			for (int y = 0; y < Stackable.allSize; y++) {
-				for (int z = 0; z < Stackable.allSize; z++) {
-					for (int x = 0; x < Stackable.allSize; x++) {
+			for (int y = 0; y < Stackable.size; y++) {
+				for (int z = 0; z < Stackable.size; z++) {
+					for (int x = 0; x < Stackable.size; x++) {
 						l.add(Pair.of(count, new Vec3i(x, y, z)));
 						count++;
 					}
@@ -150,6 +155,5 @@ public class Stackable {
 			return l.stream();
 		}).collect(Collectors.toList())).build();
 	}
-
 
 }

@@ -1,4 +1,5 @@
 tile.stackable:ingots.name=Ingot Pile
 tile.stackable:ingot_pile.name=Ingot Pile
 tile.stackable:any_pile.name=Any Pile
-key.stackable.place=Hold to place pile
+key.stackable.place=Place pile
+key.stackable.cycle=Cycle pile
