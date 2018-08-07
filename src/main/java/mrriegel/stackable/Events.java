@@ -80,8 +80,8 @@ public class Events {
 					ei.setPosition(aabb.minX, aabb.minY, aabb.minZ);
 				} else
 					ei.setPosition(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-				t.getWorld().spawnEntity(ei);
-				ei.onCollideWithPlayer(player);
+				if (t.getWorld().spawnEntity(ei))
+					ei.onCollideWithPlayer(player);
 			}
 		}
 	}
