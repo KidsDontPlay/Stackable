@@ -64,29 +64,6 @@ public class IngotModel implements IBakedModel {
 		if ("getDamageModel".equals(ste.getMethodName())) {
 			return brokenQuads;
 		}
-		if (!true) {
-			IBakedModel ironModel = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(Blocks.IRON_ORE.getDefaultState());
-			List<BakedQuad> iron = Arrays.stream(EnumFacing.VALUES).flatMap(f -> ironModel.getQuads(Blocks.IRON_ORE.getDefaultState(), f, 0).stream()).collect(Collectors.toList());
-//			iron=Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(new ItemStack(ForgeRegistries.ITEMS.getValue(new ResourceLocation("immersiveengineering", "chemthrower")))).getQuads(null, null, 0);
-			final int size = 4;
-			float f = 1f / size;
-			float ff=f*.9f;
-			List<BakedQuad> quads = new ArrayList<>();
-			for (int y = 0; y < size; y++) {
-				for (int z = 0; z < size; z++) {
-					for (int x = 0; x < size; x++) {
-						for (BakedQuad q : iron) {
-							BakedQuad b = q;
-							b = ClientUtils.scale(b, ff, ff, ff);
-							b = ClientUtils.translate(b, x * f, y * f, z * f);
-//							b=ClientUtils.rotate(b, 2, 0, 1, 0);
-							quads.add(b);
-						}
-					}
-				}
-			}
-			return quads;
-		}
 		TileIngots tile = (TileIngots) ((IExtendedBlockState) state).getValue(BlockIngots.TILE_PROP);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {

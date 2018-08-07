@@ -24,14 +24,12 @@ import org.lwjgl.util.vector.Vector4f;
 
 import com.google.common.collect.Streams;
 
-import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -42,7 +40,6 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.BakedQuadRetextured;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.block.model.ModelResourceLocation;
@@ -50,7 +47,6 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
-import net.minecraft.client.renderer.vertex.VertexFormatElement.EnumUsage;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -78,12 +74,10 @@ import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
-import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent;
@@ -101,37 +95,47 @@ public class ClientUtils {
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
-	public static boolean WAILAorTOP = Loader.isModLoaded("waila") || Loader.isModLoaded("theoneprobe");
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
 			return cachedColors.getInt(stack);
 		if (stack.isEmpty())
 			return 0xffffff;
-		TextureAtlasSprite tas = mc.getRenderItem().getItemModelMesher().getItemModel(stack).getParticleTexture();
-		if (tas == mc.getTextureMapBlocks().getMissingSprite() || tas.getIconHeight() <= 0 || tas.getIconWidth() <= 0 || tas.getFrameCount() <= 0)
-			return 0xffffff;
-		BufferedImage img = new BufferedImage(tas.getIconWidth(), tas.getIconHeight() * tas.getFrameCount(), BufferedImage.TYPE_4BYTE_ABGR);
-		for (int i = 0; i < tas.getFrameCount(); i++) {
-			int[][] frameTextureData = tas.getFrameTextureData(i);
-			int[] largestMipMapTextureData = frameTextureData[0];
-			img.setRGB(0, i * tas.getIconHeight(), tas.getIconWidth(), tas.getIconHeight(), largestMipMapTextureData, 0, tas.getIconWidth());
-		}
+		IBakedModel model = ForgeHooksClient.handleCameraTransforms(mc.getRenderItem().getItemModelMesher().getItemModel(stack), TransformType.GUI, false);
 		int red = 0, green = 0, blue = 0, count = 0;
-		for (int x = 0; x < img.getWidth(); x++)
-			for (int y = 0; y < img.getHeight(); y++) {
-				int rgb = img.getRGB(x, y);
-				Color col = new Color(rgb, true);
-				if (col.getAlpha() == 255) {
-					red += col.getRed();
-					green += col.getGreen();
-					blue += col.getBlue();
-					count++;
-				}
+		for (BakedQuad bq : model.getQuads(null, null, 0)) {
+			TextureAtlasSprite tas = bq.getSprite();
+			int itemC = -1;
+			if (bq.hasTintIndex()) {
+				itemC = mc.getItemColors().colorMultiplier(stack, bq.getTintIndex());
+				if (EntityRenderer.anaglyphEnable)
+					itemC = TextureUtil.anaglyphColor(itemC);
+				itemC |= 0xff000000;
 			}
-		int c = new Color((red / count), (green / count), (blue / count)).getRGB();
-		cachedColors.put(stack, c);
-		return c;
+			Color itemColor = new Color(itemC, true);
+			if (tas == mc.getTextureMapBlocks().getMissingSprite() || tas.getIconHeight() <= 0 || tas.getIconWidth() <= 0 || tas.getFrameCount() <= 0)
+				continue;
+			BufferedImage img = new BufferedImage(tas.getIconWidth(), tas.getIconHeight() * tas.getFrameCount(), BufferedImage.TYPE_4BYTE_ABGR);
+			for (int i = 0; i < tas.getFrameCount(); i++) {
+				int[][] frameTextureData = tas.getFrameTextureData(i);
+				int[] largestMipMapTextureData = frameTextureData[0];
+				img.setRGB(0, i * tas.getIconHeight(), tas.getIconWidth(), tas.getIconHeight(), largestMipMapTextureData, 0, tas.getIconWidth());
+			}
+			for (int x = 0; x < img.getWidth(); x++)
+				for (int y = 0; y < img.getHeight(); y++) {
+					int rgb = img.getRGB(x, y);
+					Color col = new Color(rgb, true);
+					if (col.getAlpha() == 255) {
+						red += col.getRed() * (itemColor.getRed() / 255f);
+						green += col.getGreen() * (itemColor.getGreen() / 255f);
+						blue += col.getBlue() * (itemColor.getBlue() / 255f);
+						count++;
+					}
+				}
+		}
+		int color = count == 0 ? -1 : new Color((red / count), (green / count), (blue / count)).getRGB();
+		cachedColors.put(stack, color);
+		return color;
 	}
 
 	public static TextureAtlasSprite sprite(ItemStack stack) {
@@ -159,8 +163,6 @@ public class ClientUtils {
 	}
 
 	public static void init() {
-		//		defaultTas = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/ingots");
-		//		white = mc.getTextureMapBlocks().getAtlasSprite("stackable:blocks/white");
 		IngotModel.init();
 		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
@@ -227,8 +229,9 @@ public class ClientUtils {
 						return;
 					ItemStack s = ((TileStackable) t).lookingStack(mc.player);
 					if (!s.isEmpty()) {
+						TileStackable m = ((TileStackable) t).getMaster();
 						ScaledResolution sr = event.getResolution();
-						String text = s.getDisplayName();
+						String text = m.inv.inventory.getInt(s) + "x " + s.getDisplayName();
 						int textWidth = mc.fontRenderer.getStringWidth(text);
 						int x = sr.getScaledWidth() / 2 - textWidth / 2, y = sr.getScaledHeight() / 2 + mc.fontRenderer.FONT_HEIGHT + 5;
 						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, 0, true);
@@ -343,8 +346,22 @@ public class ClientUtils {
 					if (EntityRenderer.anaglyphEnable)
 						color = TextureUtil.anaglyphColor(color);
 					color |= 0xFF000000;
+					float a = (color >> 24 & 255) / 255f, //
+							r = (color >> 16 & 255) / 255f, //
+							g = (color >> 8 & 255) / 255f, //
+							b = (color >> 0 & 255) / 255f;
+					UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
+					builder.setTexture(bq.getSprite());
+					VertexFormat format = bq.getFormat();
+					for (int k = 0; k < 4; k++)
+						for (int e = 0; e < format.getElementCount(); e++)
+							builder.put(e, r, g, b, a);
+					int[] colorData = builder.build().getVertexData();
 					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
-					data[3] = data[10] = data[17] = data[24] = color;
+					data[3] = colorData[3];
+					data[10] = colorData[10];
+					data[17] = colorData[17];
+					data[24] = colorData[24];
 					bq = new BakedQuad(data, bq.getTintIndex(), bq.getFace(), bq.getSprite(), bq.shouldApplyDiffuseLighting(), bq.getFormat());
 				}
 				return bq;
@@ -359,22 +376,7 @@ public class ClientUtils {
 					intset.add(new IntArrayList(b.getVertexData()));
 
 			}
-			if (true)
-				return ret;
-			ObjectOpenCustomHashSet<BakedQuad> set = new ObjectOpenCustomHashSet<>(new Hash.Strategy<BakedQuad>() {
-
-				@Override
-				public int hashCode(BakedQuad o) {
-					return o == null ? 0 : Arrays.hashCode(o.getVertexData());
-				}
-
-				@Override
-				public boolean equals(BakedQuad a, BakedQuad b) {
-					return a != null && b != null && Arrays.equals(a.getVertexData(), b.getVertexData());
-				}
-			});
-			set.addAll(ret);
-			return new ArrayList<>(set);
+			return ret;
 		} else {
 			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
 			if (model.isGui3d())
@@ -397,12 +399,8 @@ public class ClientUtils {
 					builder.setTexture(bq.getSprite());
 					VertexFormat format = bq.getFormat();
 					for (int k = 0; k < 4; k++)
-						for (int e = 0; e < format.getElementCount(); e++) {
-							if (format.getElement(e).getUsage() == EnumUsage.COLOR) {
-								builder.put(e, r, g, b, a);
-							} else
-								builder.put(e, 1f, 1f, 1f, 1f);
-						}
+						for (int e = 0; e < format.getElementCount(); e++)
+							builder.put(e, r, g, b, a);
 					int[] colorData = builder.build().getVertexData();
 					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
 					data[3] = colorData[3];
