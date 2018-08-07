@@ -1,6 +1,7 @@
-package mrriegel.stackable;
+package mrriegel.stackable.message;
 
 import io.netty.buffer.ByteBuf;
+import mrriegel.stackable.Events;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;

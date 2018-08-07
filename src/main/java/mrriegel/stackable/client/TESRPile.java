@@ -1,9 +1,11 @@
-package mrriegel.stackable;
+package mrriegel.stackable.client;
 
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import mrriegel.stackable.Stackable;
+import mrriegel.stackable.tile.TileAll;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;

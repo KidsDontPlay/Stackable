@@ -1,8 +1,10 @@
-package mrriegel.stackable;
+package mrriegel.stackable.block;
 
 import java.util.List;
 import java.util.stream.IntStream;
 
+import mrriegel.stackable.client.ClientUtils;
+import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;

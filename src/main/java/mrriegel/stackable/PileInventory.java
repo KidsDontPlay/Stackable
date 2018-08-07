@@ -10,6 +10,7 @@ import org.apache.commons.lang3.Validate;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -22,7 +23,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 
 	private final TileStackable tile;
 	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileStackable.strategy);
-	List<ItemStack> items = null;
+	public List<ItemStack> items = null;
 	boolean threadStarted = false;
 
 	public PileInventory(TileStackable tile) {

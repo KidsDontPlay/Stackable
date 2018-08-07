@@ -1,4 +1,4 @@
-package mrriegel.stackable;
+package mrriegel.stackable.client;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,6 +8,10 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
+import mrriegel.stackable.Stackable;
+import mrriegel.stackable.block.BlockIngots;
+import mrriegel.stackable.block.BlockStackable;
+import mrriegel.stackable.tile.TileIngots;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -16,8 +20,6 @@ import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemOverrideList;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -41,6 +43,7 @@ public class IngotModel implements IBakedModel {
 				fallBack.add(qs.get(0));
 		}
 	}
+
 	private final Map<TileIngots, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
 
 	@Override
@@ -66,7 +69,7 @@ public class IngotModel implements IBakedModel {
 		if ("getDamageModel".equals(ste.getMethodName())) {
 			return brokenQuads;
 		}
-		TileIngots tile = (TileIngots) ((IExtendedBlockState) state).getValue(BlockIngots.TILE_PROP);
+		TileIngots tile = (TileIngots) ((IExtendedBlockState) state).getValue(BlockStackable.TILE_PROP);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {
 			//cachedQuads.clear();

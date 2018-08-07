@@ -1,10 +1,11 @@
-package mrriegel.stackable;
+package mrriegel.stackable.tile;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.collect.BiMap;
 
+import mrriegel.stackable.Stackable;
 import net.minecraft.block.SoundType;
 import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemBlock;

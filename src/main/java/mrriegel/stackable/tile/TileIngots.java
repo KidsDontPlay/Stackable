@@ -1,4 +1,4 @@
-package mrriegel.stackable;
+package mrriegel.stackable.tile;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,6 +7,7 @@ import java.util.List;
 import com.google.common.collect.BiMap;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenCustomHashMap;
+import mrriegel.stackable.Stackable;
 import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.SoundEvent;

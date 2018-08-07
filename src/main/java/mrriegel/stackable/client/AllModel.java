@@ -1,4 +1,4 @@
-package mrriegel.stackable;
+package mrriegel.stackable.client;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import mrriegel.stackable.Stackable;
+import mrriegel.stackable.block.BlockIngots;
+import mrriegel.stackable.block.BlockStackable;
+import mrriegel.stackable.tile.TileAll;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.model.BakedQuad;
@@ -30,7 +34,7 @@ public class AllModel implements IBakedModel {
 		if ("getDamageModel".equals(ste.getMethodName())) {
 			return IngotModel.brokenQuads;
 		}
-		TileAll tile = (TileAll) ((IExtendedBlockState) state).getValue(BlockIngots.TILE_PROP);
+		TileAll tile = (TileAll) ((IExtendedBlockState) state).getValue(BlockStackable.TILE_PROP);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {
 			//cachedQuads.clear();

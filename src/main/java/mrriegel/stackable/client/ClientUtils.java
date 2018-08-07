@@ -1,4 +1,4 @@
-package mrriegel.stackable;
+package mrriegel.stackable.client;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -30,6 +30,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
+import mrriegel.stackable.Stackable;
+import mrriegel.stackable.block.BlockIngots;
+import mrriegel.stackable.block.BlockStackable;
+import mrriegel.stackable.message.MessagePlaceKey;
+import mrriegel.stackable.tile.TileAll;
+import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -265,7 +271,7 @@ public class ClientUtils {
 	@SubscribeEvent
 	public static void load(Load event) {
 		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
-		bakedModelStore.put(BlockIngots.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
+		bakedModelStore.put(BlockStackable.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
 		brokenBlocks.clear();
 		event.getWorld().addEventListener(new IWorldEventListener() {
 

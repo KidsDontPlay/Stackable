@@ -12,6 +12,13 @@ import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.ImmutableBiMap;
 
+import mrriegel.stackable.block.BlockAll;
+import mrriegel.stackable.block.BlockIngots;
+import mrriegel.stackable.client.ClientUtils;
+import mrriegel.stackable.message.MessageConfigSync;
+import mrriegel.stackable.message.MessagePlaceKey;
+import mrriegel.stackable.tile.TileAll;
+import mrriegel.stackable.tile.TileIngots;
 import net.minecraft.block.Block;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -84,7 +91,6 @@ public class Stackable {
 		}
 		//TODO
 		//block lights if item lights
-		//iitemcolor/blockcolor
 	}
 
 	@Mod.EventHandler

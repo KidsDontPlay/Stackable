@@ -1,4 +1,4 @@
-package mrriegel.stackable;
+package mrriegel.stackable.tile;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,6 +12,7 @@ import com.google.common.collect.BiMap;
 
 import it.unimi.dsi.fastutil.Hash.Strategy;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import mrriegel.stackable.PileInventory;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
