@@ -6,7 +6,6 @@ import static net.minecraftforge.common.config.Configuration.NEW_LINE;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -49,7 +48,7 @@ public class Stackable {
 	@Instance(Stackable.MODID)
 	public static Stackable INSTANCE;
 
-	public static final String VERSION = "1.0.0";
+	public static final String VERSION = "1.1.0";
 	public static final String NAME = "Stackable";
 	public static final String MODID = "stackable";
 
