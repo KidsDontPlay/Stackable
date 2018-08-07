@@ -166,6 +166,7 @@ public class ClientUtils {
 		IngotModel.init();
 		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
+		ClientRegistry.bindTileEntitySpecialRenderer(TileAll.class, new TESRPile());
 	}
 
 	@SubscribeEvent
