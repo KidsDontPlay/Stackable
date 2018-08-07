@@ -12,13 +12,13 @@ import org.lwjgl.input.Keyboard;
 
 import com.google.common.collect.ImmutableBiMap;
 
-import mrriegel.stackable.block.BlockAll;
-import mrriegel.stackable.block.BlockIngots;
+import mrriegel.stackable.block.BlockAnyPile;
+import mrriegel.stackable.block.BlockIngotPile;
 import mrriegel.stackable.client.ClientUtils;
 import mrriegel.stackable.message.MessageConfigSync;
 import mrriegel.stackable.message.MessagePlaceKey;
-import mrriegel.stackable.tile.TileAll;
-import mrriegel.stackable.tile.TileIngots;
+import mrriegel.stackable.tile.TileAnyPile;
+import mrriegel.stackable.tile.TileIngotPile;
 import net.minecraft.block.Block;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -58,10 +58,8 @@ public class Stackable {
 
 	public static SimpleNetworkWrapper snw;
 
-	public static final Block ingots = new BlockIngots();
-	public static final Block all = new BlockAll();
-
-	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, MODID);
+	public static final Block ingots = new BlockIngotPile();
+	public static final Block any = new BlockAnyPile();
 
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -79,6 +77,8 @@ public class Stackable {
 		if (config.hasChanged())
 			config.save();
 		generateConstants();
+		mehr config
+		set pile on keypress without click
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
 		snw.registerMessage(MessagePlaceKey.class, MessagePlaceKey.class, 1, Side.SERVER);
@@ -91,6 +91,7 @@ public class Stackable {
 		}
 		//TODO
 		//block lights if item lights
+		//waila support (disable overlay when waila is loaded, add amount to tooltip)
 	}
 
 	@Mod.EventHandler
@@ -101,9 +102,9 @@ public class Stackable {
 	public static void register(@SuppressWarnings("rawtypes") RegistryEvent.Register event) {
 		if (event.getGenericType() == Block.class) {
 			event.getRegistry().register(ingots);
-			GameRegistry.registerTileEntity(TileIngots.class, ingots.getRegistryName().toString());
-			event.getRegistry().register(all);
-			GameRegistry.registerTileEntity(TileAll.class, all.getRegistryName().toString());
+			GameRegistry.registerTileEntity(TileIngotPile.class, ingots.getRegistryName().toString());
+			event.getRegistry().register(any);
+			GameRegistry.registerTileEntity(TileAnyPile.class, any.getRegistryName().toString());
 		}
 	}
 
@@ -120,8 +121,8 @@ public class Stackable {
 	}
 
 	public static void generateConstants() {
-		TileIngots.maxIngotAmount = Stackable.perX * Stackable.perY * Stackable.perZ;
-		TileIngots.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
+		TileIngotPile.maxIngotAmount = Stackable.perX * Stackable.perY * Stackable.perZ;
+		TileIngotPile.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
 			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
 			int count = 0;
 			for (int y = 0; y < Stackable.perY; y++) {
@@ -134,8 +135,8 @@ public class Stackable {
 			}
 			return l.stream();
 		}).collect(Collectors.toList())).build();
-		TileAll.maxItemAmount = Stackable.allSize * Stackable.allSize * Stackable.allSize;
-		TileAll.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
+		TileAnyPile.maxItemAmount = Stackable.allSize * Stackable.allSize * Stackable.allSize;
+		TileAnyPile.coordMap = ImmutableBiMap.<Integer, Vec3i> builder().putAll(Stream.of((Object) null).flatMap(n -> {
 			List<Pair<Integer, Vec3i>> l = new ArrayList<>();
 			int count = 0;
 			for (int y = 0; y < Stackable.allSize; y++) {
@@ -150,7 +151,5 @@ public class Stackable {
 		}).collect(Collectors.toList())).build();
 	}
 
-	//TODO waila support (disable overlay when waila is loaded)
-	//override getDrops
 
 }

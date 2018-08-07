@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.tile.TileAll;
+import mrriegel.stackable.tile.TileAnyPile;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -17,10 +17,10 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
-public class TESRPile extends TileEntitySpecialRenderer<TileAll> {
+public class TESRAnyPile extends TileEntitySpecialRenderer<TileAnyPile> {
 
 	@Override
-	public void render(TileAll te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
+	public void render(TileAnyPile te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
 		List<ItemStack> stacks = te.itemList();
 		List<AxisAlignedBB> aabbs = te.itemBoxes();
 		int size = Math.min(stacks.size(), aabbs.size());

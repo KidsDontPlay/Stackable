@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import mrriegel.stackable.tile.TileIngots;
+import mrriegel.stackable.tile.TileIngotPile;
 import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
@@ -69,7 +69,7 @@ public class Events {
 	public static void rightclick(RightClickBlock event) {
 		EntityPlayer player = event.getEntityPlayer();
 		ItemStack main = player.getHeldItemMainhand();
-		Block block = TileIngots.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.all : null;
+		Block block = TileIngotPile.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.any : null;
 		if (placeKeyDown && event.getFace() == EnumFacing.UP && (placed.contains(player.getUniqueID()) || block != null)) {
 			placed.remove(player.getUniqueID());
 			if (event.getHand() == EnumHand.OFF_HAND) {

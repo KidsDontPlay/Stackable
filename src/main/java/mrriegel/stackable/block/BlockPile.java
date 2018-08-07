@@ -30,7 +30,7 @@ import net.minecraftforge.common.property.IUnlistedProperty;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
-public class BlockStackable extends Block {
+public class BlockPile extends Block {
 	public static final IBlockState DAMAGE = new Block(Material.AIR).getDefaultState();
 	public static final IUnlistedProperty<TileEntity> TILE_PROP = new IUnlistedProperty<TileEntity>() {
 
@@ -55,7 +55,7 @@ public class BlockStackable extends Block {
 		}
 	};
 
-	public BlockStackable(String name, Material materialIn) {
+	public BlockPile(String name, Material materialIn) {
 		super(materialIn);
 		setRegistryName(name);
 		setUnlocalizedName(getRegistryName().toString());
@@ -184,4 +184,5 @@ public class BlockStackable extends Block {
 		}
 		worldIn.removeTileEntity(pos);
 	}
+	
 }

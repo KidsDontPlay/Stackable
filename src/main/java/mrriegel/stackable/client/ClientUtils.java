@@ -31,10 +31,9 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.block.BlockIngots;
-import mrriegel.stackable.block.BlockStackable;
+import mrriegel.stackable.block.BlockPile;
 import mrriegel.stackable.message.MessagePlaceKey;
-import mrriegel.stackable.tile.TileAll;
+import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -53,6 +52,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -81,6 +81,7 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
+import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -98,6 +99,7 @@ public class ClientUtils {
 	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileStackable.strategy);
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
+	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, Stackable.NAME);
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
@@ -169,15 +171,15 @@ public class ClientUtils {
 	}
 
 	public static void init() {
-		IngotModel.init();
+		PileModel.init();
 		brokenBlocks.defaultReturnValue(-1);
-		ClientRegistry.registerKeyBinding(Stackable.PLACE_KEY);
-		ClientRegistry.bindTileEntitySpecialRenderer(TileAll.class, new TESRPile());
+		ClientRegistry.registerKeyBinding(PLACE_KEY);
+		ClientRegistry.bindTileEntitySpecialRenderer(TileAnyPile.class, new TESRAnyPile());
 	}
 
 	@SubscribeEvent
 	public static void keyInput(KeyInputEvent event) {
-		if (Keyboard.getEventKey() == Stackable.PLACE_KEY.getKeyCode())
+		if (Keyboard.getEventKey() == PLACE_KEY.getKeyCode())
 			Stackable.snw.sendToServer(new MessagePlaceKey(Keyboard.getEventKeyState()));
 	}
 
@@ -264,14 +266,14 @@ public class ClientUtils {
 	@SubscribeEvent
 	public static void bake(ModelBakeEvent event) {
 		mc = Minecraft.getMinecraft();
-		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotModel());
-		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.all.getRegistryName().toString()), new AllModel());
+		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotPileModel());
+		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.any.getRegistryName().toString()), new AnyPileModel());
 	}
 
 	@SubscribeEvent
 	public static void load(Load event) {
 		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
-		bakedModelStore.put(BlockStackable.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
+		bakedModelStore.put(BlockPile.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
 		brokenBlocks.clear();
 		event.getWorld().addEventListener(new IWorldEventListener() {
 
@@ -432,7 +434,7 @@ public class ClientUtils {
 					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
 
 					TextureAtlasSprite tas = defaultTas;
-					float r, g, b, a = 1f;
+					float r=1f, g=1f, b=1f, a = 1f;
 					Color col = new Color(color(stack));
 					float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 					col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
