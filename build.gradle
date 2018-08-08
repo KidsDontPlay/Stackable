@@ -27,6 +27,20 @@ minecraft {
     mappings = "${props.get('mapping')}"
 }
 
+dependencies {
+    deobfCompile "${props.get('hwyla_version')}"
+    deobfCompile "${props.get('top_version')}"
+}
+
+repositories {
+    maven {
+        url "http://tehnut.info/maven"
+    }
+    maven {
+        url "http://maven.tterrag.com"
+    }
+}
+
 processResources {
     inputs.property "version", project.version
     inputs.property "mcversion", project.minecraft.version

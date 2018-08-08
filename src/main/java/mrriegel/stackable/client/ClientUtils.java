@@ -85,6 +85,7 @@ import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent;
@@ -104,6 +105,8 @@ public class ClientUtils {
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
+	public static final boolean WAILA_LOADED = Loader.isModLoaded("waila"), TOP_LOADED = Loader.isModLoaded("theoneprobe");
+	public static long wailaTime = 0, topTime = 0;
 
 	public static int color(ItemStack stack) {
 		if (cachedColors.containsKey(stack))
@@ -237,6 +240,9 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void renderText(RenderGameOverlayEvent.Post event) {
+		long time = mc.world.getTotalWorldTime();
+		boolean waila = WAILA_LOADED && wailaTime + 10 >= time;
+		boolean top = TOP_LOADED && topTime + 10 >= time;
 		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL /*&& !WAILAorTOP*/) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
@@ -246,10 +252,9 @@ public class ClientUtils {
 					if (h.getItem().getToolClasses(h).contains("pickaxe"))
 						return;
 					ItemStack s = ((TileStackable) t).lookingStack(mc.player);
-					if (!s.isEmpty()) {
-						TileStackable m = ((TileStackable) t).getMaster();
+					if (!s.isEmpty() && !waila && !top) {
 						ScaledResolution sr = event.getResolution();
-						String text = m.inv.inventory.getInt(s) + "x " + s.getDisplayName();
+						String text = TileStackable.getOverlayText(s, (TileStackable) t);
 						int textWidth = mc.fontRenderer.getStringWidth(text);
 						int x = sr.getScaledWidth() / 2 - textWidth / 2, y = sr.getScaledHeight() / 2 + mc.fontRenderer.FONT_HEIGHT + 5;
 						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, 0, true);

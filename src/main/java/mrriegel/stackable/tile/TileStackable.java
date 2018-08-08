@@ -57,6 +57,12 @@ public abstract class TileStackable extends TileEntity {
 			return Objects.equals(a.getTagCompound(), b.getTagCompound());
 		}
 	};
+
+	public static String getOverlayText(ItemStack s, TileStackable t) {
+		TileStackable m = t.getMaster();
+		return m.inv.inventory.getInt(s) + "x " + s.getDisplayName();
+	}
+
 	public PileInventory inv = new PileInventory(this);
 
 	public boolean needSync = true;
@@ -173,7 +179,7 @@ public abstract class TileStackable extends TileEntity {
 	public abstract SoundEvent placeSound(ItemStack stack);
 
 	public abstract Vec3i getDimension();
-	
+
 	public abstract int maxPileHeight();
 
 	public List<TileStackable> getAllPileBlocks() {

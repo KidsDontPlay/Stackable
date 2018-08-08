@@ -18,8 +18,11 @@ import com.google.common.collect.ImmutableBiMap;
 import mrriegel.stackable.block.BlockAnyPile;
 import mrriegel.stackable.block.BlockIngotPile;
 import mrriegel.stackable.client.ClientUtils;
+import mrriegel.stackable.compat.TOPPlugin;
+import mrriegel.stackable.compat.WailaPlugin;
 import mrriegel.stackable.message.MessageConfigSync;
 import mrriegel.stackable.message.MessageKey;
+import mrriegel.stackable.message.MessageTOPTime;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TileIngotPile;
 import net.minecraft.block.Block;
@@ -30,10 +33,12 @@ import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.Mod.Instance;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLInterModComms;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -85,6 +90,7 @@ public class Stackable {
 		snw = new SimpleNetworkWrapper(MODID);
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
 		snw.registerMessage(MessageKey.class, MessageKey.class, 1, Side.SERVER);
+		snw.registerMessage(MessageTOPTime.class, MessageTOPTime.class, 2, Side.CLIENT);
 	}
 
 	@Mod.EventHandler
@@ -92,6 +98,10 @@ public class Stackable {
 		if (FMLCommonHandler.instance().getEffectiveSide().isClient()) {
 			ClientUtils.init();
 		}
+		if (Loader.isModLoaded("theoneprobe"))
+			FMLInterModComms.sendFunctionMessage("theoneprobe", "getTheOneProbe", TOPPlugin.class.getName());
+		if (Loader.isModLoaded("waila"))
+			FMLInterModComms.sendFunctionMessage("waila", "register", WailaPlugin.class.getName() + ".register");
 		//TODO
 		//waila support (disable overlay when waila is loaded, add amount to tooltip)
 	}
