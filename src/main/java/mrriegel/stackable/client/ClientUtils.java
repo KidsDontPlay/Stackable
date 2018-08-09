@@ -5,11 +5,8 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,7 +21,6 @@ import org.lwjgl.util.vector.Vector4f;
 
 import com.google.common.collect.Streams;
 
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -85,7 +81,6 @@ import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent;
@@ -105,7 +100,6 @@ public class ClientUtils {
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
 	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
-	public static final boolean WAILA_LOADED = Loader.isModLoaded("waila"), TOP_LOADED = Loader.isModLoaded("theoneprobe");
 	public static long wailaTime = 0, topTime = 0;
 
 	public static int color(ItemStack stack) {
@@ -241,8 +235,8 @@ public class ClientUtils {
 	@SubscribeEvent
 	public static void renderText(RenderGameOverlayEvent.Post event) {
 		long time = mc.world.getTotalWorldTime();
-		boolean waila = WAILA_LOADED && wailaTime + 10 >= time;
-		boolean top = TOP_LOADED && topTime + 10 >= time;
+		boolean waila = wailaTime + 10 >= time;
+		boolean top = topTime + 10 >= time;
 		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL /*&& !WAILAorTOP*/) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
@@ -363,43 +357,18 @@ public class ClientUtils {
 			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
 				return Collections.emptyList();
 			IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(state);
-			List<BakedQuad> ret = Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).map(bq -> {
+			return Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).map(bq -> {
 				if (bq.hasTintIndex()) {
 					int color = mc.getBlockColors().colorMultiplier(sstate, mc.world, BlockPos.ORIGIN, bq.getTintIndex());
 					if (EntityRenderer.anaglyphEnable)
 						color = TextureUtil.anaglyphColor(color);
-					color |= 0xFF000000;
-					float a = (color >> 24 & 255) / 255f, //
-							r = (color >> 16 & 255) / 255f, //
-							g = (color >> 8 & 255) / 255f, //
-							b = (color >> 0 & 255) / 255f;
-					UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
-					builder.setTexture(bq.getSprite());
-					VertexFormat format = bq.getFormat();
-					for (int k = 0; k < 4; k++)
-						for (int e = 0; e < format.getElementCount(); e++)
-							builder.put(e, r, g, b, a);
-					int[] colorData = builder.build().getVertexData();
+					color = correctColor(color);
 					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
-					data[3] = colorData[3];
-					data[10] = colorData[10];
-					data[17] = colorData[17];
-					data[24] = colorData[24];
+					data[3] = data[10] = data[17] = data[24] = color;
 					bq = new BakedQuad(data, bq.getTintIndex(), bq.getFace(), bq.getSprite(), bq.shouldApplyDiffuseLighting(), bq.getFormat());
 				}
 				return bq;
 			}).collect(Collectors.toList());
-			Set<IntArrayList> intset = new HashSet<>();
-			Iterator<BakedQuad> it = ret.iterator();
-			while (it.hasNext()) {
-				BakedQuad b = it.next();
-				if (intset.contains(new IntArrayList(b.getVertexData())))
-					it.remove();
-				else
-					intset.add(new IntArrayList(b.getVertexData()));
-
-			}
-			return ret;
 		} else {
 			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
 			if (model.isGui3d())
@@ -413,105 +382,79 @@ public class ClientUtils {
 					int color = mc.getItemColors().colorMultiplier(stack, bq.getTintIndex());
 					if (EntityRenderer.anaglyphEnable)
 						color = TextureUtil.anaglyphColor(color);
-					color |= 0xFF000000;
-					float a = (color >> 24 & 255) / 255f, //
-							r = (color >> 16 & 255) / 255f, //
-							g = (color >> 8 & 255) / 255f, //
-							b = (color >> 0 & 255) / 255f;
-					UnpackedBakedQuad.Builder builder = new UnpackedBakedQuad.Builder(DefaultVertexFormats.ITEM);
-					builder.setTexture(bq.getSprite());
-					VertexFormat format = bq.getFormat();
-					for (int k = 0; k < 4; k++)
-						for (int e = 0; e < format.getElementCount(); e++)
-							builder.put(e, r, g, b, a);
-					int[] colorData = builder.build().getVertexData();
+					color = correctColor(color);
 					int[] data = Arrays.copyOf(bq.getVertexData(), bq.getVertexData().length);
-					data[3] = colorData[3];
-					data[10] = colorData[10];
-					data[17] = colorData[17];
-					data[24] = colorData[24];
+					data[3] = data[10] = data[17] = data[24] = color;
 					bq = new BakedQuad(data, bq.getTintIndex(), bq.getFace(), bq.getSprite(), bq.shouldApplyDiffuseLighting(), bq.getFormat());
 				}
-				boolean hard = "".isEmpty();
-				if (hard) {
-					//south
-					ret.add(translate(bq, 0, 0, .5f));
-					//north
-					ret.add(translate(rotate(bq, 180, 0, 1, 0), 1, 0, .5f));
-					//east
-					ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
-					//west
-					ret.add(translate(rotate(bq, 270, 0, 1, 0), .5f, 0, 0));
-					//down
-					ret.add(translate(rotate(bq, 90, 1, 0, 0), 0, .5f, 0));
-					//up
-					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
+				//south
+				ret.add(translate(bq, 0, 0, .5f));
+				//north
+				ret.add(translate(rotate(bq, 180, 0, 1, 0), 1, 0, .5f));
+				//east
+				ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
+				//west
+				ret.add(translate(rotate(bq, 270, 0, 1, 0), .5f, 0, 0));
+				//down
+				ret.add(translate(rotate(bq, 90, 1, 0, 0), 0, .5f, 0));
+				//up
+				ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
 
-					TextureAtlasSprite tas = defaultTas;
-					float r = 1f, g = 1f, b = 1f, a = 1f;
-					Color col = new Color(color(stack));
-					float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
-					col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
-					r = col.getRed() / 255f;
-					g = col.getGreen() / 255f;
-					b = col.getBlue() / 255f;
-					//west
-					ret.add(createQuad(tas, //
-							0, 1, 0, //
-							0, 0, 0, //
-							0, 0, 1, //
-							0, 1, 1, //
-							r, g, b, a));
-					//east
-					ret.add(createQuad(tas, //
-							1, 1, 1, //
-							1, 0, 1, //
-							1, 0, 0, //
-							1, 1, 0, //
-							r, g, b, a));
-					//down
-					ret.add(createQuad(tas, //
-							1, 0, 1, //
-							0, 0, 1, //
-							0, 0, 0, //
-							1, 0, 0, //
-							r, g, b, a));
-					//up
-					ret.add(createQuad(tas, //
-							1, 1, 0, //
-							0, 1, 0, //
-							0, 1, 1, //
-							1, 1, 1, //
-							r, g, b, a));
-					//south
-					ret.add(createQuad(tas, //
-							1, 1, 1, //
-							0, 1, 1, //
-							0, 0, 1, //
-							1, 0, 1, //
-							r, g, b, a));
-					ret.add(createQuad(tas, //
-							1, 0, 0, //
-							0, 0, 0, //
-							0, 1, 0, //
-							1, 1, 0, //
-							r, g, b, a));
+				TextureAtlasSprite tas = defaultTas;
+				Color col = new Color(color(stack));
+				float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
+				col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
+				float r = col.getRed() / 255f, g = col.getGreen() / 255f, b = col.getBlue() / 255f, a = 1f;
+				//west
+				ret.add(createQuad(tas, //
+						0, 1, 0, //
+						0, 0, 0, //
+						0, 0, 1, //
+						0, 1, 1, //
+						r, g, b, a));
+				//east
+				ret.add(createQuad(tas, //
+						1, 1, 1, //
+						1, 0, 1, //
+						1, 0, 0, //
+						1, 1, 0, //
+						r, g, b, a));
+				//down
+				ret.add(createQuad(tas, //
+						1, 0, 1, //
+						0, 0, 1, //
+						0, 0, 0, //
+						1, 0, 0, //
+						r, g, b, a));
+				//up
+				ret.add(createQuad(tas, //
+						1, 1, 0, //
+						0, 1, 0, //
+						0, 1, 1, //
+						1, 1, 1, //
+						r, g, b, a));
+				//south
+				ret.add(createQuad(tas, //
+						1, 1, 1, //
+						0, 1, 1, //
+						0, 0, 1, //
+						1, 0, 1, //
+						r, g, b, a));
+				//north
+				ret.add(createQuad(tas, //
+						1, 0, 0, //
+						0, 0, 0, //
+						0, 1, 0, //
+						1, 1, 0, //
+						r, g, b, a));
 
-					//					ret.add(translate(bq, 0, 0, .5f));
-					//					ret.add(translate(bq, 0, 0, -.5f));
-					//					ret.add(translate(rotate(bq, 90, 0, 1, 0), .5f, 0, 1));
-					//					ret.add(translate(rotate(bq, 90, 0, 1, 0), -.5f, 0, 1));
-					//					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
-					//					ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, -.5f, 1));
-				} else {
-					BakedQuad rotated = rotate(bq, 270, 1, 0, 0);
-					ret.add(translate(rotated, 0, -.5f, 1));
-					ret.add(translate(rotated, 0, -.4f, 1));
-					ret.add(translate(rotated, 0, -.3f, 1));
-				}
 			}
 			return ret;
 		}
+	}
+
+	private static int correctColor(int color) {
+		return 0xFF000000 | ((((color >> 16) & 0xFF) & 0xFF) << 0) | ((((color >> 8) & 0xFF) & 0xFF) << 8) | (((color & 0xFF) & 0xFF) << 16);
 	}
 
 	static void createIngot(List<BakedQuad> quads, ItemStack stack, AxisAlignedBB aabb, @Nullable TextureAtlasSprite tas) {

@@ -219,7 +219,7 @@ public abstract class TileStackable extends TileEntity {
 	public AxisAlignedBB getBox() {
 		if (box != null)
 			return box;
-		AxisAlignedBB aabb = new AxisAlignedBB(0, 0, 0, 1, 1 / 16., 1);
+		AxisAlignedBB aabb = new AxisAlignedBB(0, 0, 0, 1 / 16., 1 / 16., 1 / 16.);
 		for (AxisAlignedBB ab : itemBoxes())
 			aabb = aabb.union(ab);
 		return box = aabb;

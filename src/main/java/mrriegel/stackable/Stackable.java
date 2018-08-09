@@ -102,8 +102,6 @@ public class Stackable {
 			FMLInterModComms.sendFunctionMessage("theoneprobe", "getTheOneProbe", TOPPlugin.class.getName());
 		if (Loader.isModLoaded("waila"))
 			FMLInterModComms.sendFunctionMessage("waila", "register", WailaPlugin.class.getName() + ".register");
-		//TODO
-		//waila support (disable overlay when waila is loaded, add amount to tooltip)
 	}
 
 	@Mod.EventHandler
