@@ -237,7 +237,7 @@ public class ClientUtils {
 		long time = mc.world.getTotalWorldTime();
 		boolean waila = wailaTime + 10 >= time;
 		boolean top = topTime + 10 >= time;
-		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL /*&& !WAILAorTOP*/) {
+		if (((Stackable.overlay == 1 && mc.player.isSneaking()) || Stackable.overlay == 2) && event.getType() == ElementType.ALL && !waila && !top) {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
@@ -246,7 +246,7 @@ public class ClientUtils {
 					if (h.getItem().getToolClasses(h).contains("pickaxe"))
 						return;
 					ItemStack s = ((TileStackable) t).lookingStack(mc.player);
-					if (!s.isEmpty() && !waila && !top) {
+					if (!s.isEmpty()) {
 						ScaledResolution sr = event.getResolution();
 						String text = TileStackable.getOverlayText(s, (TileStackable) t);
 						int textWidth = mc.fontRenderer.getStringWidth(text);

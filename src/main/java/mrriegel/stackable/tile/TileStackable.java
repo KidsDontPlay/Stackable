@@ -69,6 +69,7 @@ public abstract class TileStackable extends TileEntity {
 	public boolean isMaster;
 	public boolean changedClient = true;
 	public BlockPos masterPos;
+	public long lastTake;
 
 	//cache
 	public AxisAlignedBB box = null;

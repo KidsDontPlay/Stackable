@@ -61,17 +61,19 @@ public class Events {
 		TileEntity t = event.getWorld().getTileEntity(pos);
 		EntityPlayer player = event.getEntityPlayer();
 		ItemStack h = player.getHeldItemMainhand();
+		long time = System.currentTimeMillis();
 		if (t instanceof TileStackable && !h.getItem().getToolClasses(h).contains("pickaxe")) {
 			event.setCanceled(true);
 			event.setUseBlock(Result.DENY);
 			event.setUseItem(Result.DENY);
-			if (event.getWorld().isRemote)
+			if (event.getWorld().isRemote || ((TileStackable) t).lastTake >= time - 150L)
 				return;
 			ItemStack target = ((TileStackable) t).lookingStack(player);
 			if (target.isEmpty())
 				return;
 			ItemStack s = ((TileStackable) t).getMaster().inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
 			if (!s.isEmpty()) {
+				((TileStackable) t).lastTake = time;
 				Vec3d point = player.getPositionEyes(1F).add(player.getLookVec().scale(1.5));
 				EntityItem ei = new EntityItem(t.getWorld(), point.x, point.y, point.z, s);
 				AxisAlignedBB aabb = ((TileStackable) t).lookingPos(player).getRight();
