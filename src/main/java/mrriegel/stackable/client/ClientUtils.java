@@ -280,8 +280,8 @@ public class ClientUtils {
 
 	@SubscribeEvent
 	public static void load(Load event) {
-		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
-		bakedModelStore.put(BlockPile.DAMAGE, Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
+		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, mc.getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
+		bakedModelStore.put(BlockPile.DAMAGE, mc.getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
 		brokenBlocks.clear();
 		event.getWorld().addEventListener(new IWorldEventListener() {
 
@@ -356,7 +356,7 @@ public class ClientUtils {
 			IBlockState sstate = state;
 			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
 				return Collections.emptyList();
-			IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getModelForState(state);
+			IBakedModel model = mc.getBlockRendererDispatcher().getModelForState(state);
 			return Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).map(bq -> {
 				if (bq.hasTintIndex()) {
 					int color = mc.getBlockColors().colorMultiplier(sstate, mc.world, BlockPos.ORIGIN, bq.getTintIndex());
@@ -370,7 +370,7 @@ public class ClientUtils {
 				return bq;
 			}).collect(Collectors.toList());
 		} else {
-			IBakedModel model = Minecraft.getMinecraft().getRenderItem().getItemModelMesher().getItemModel(stack);
+			IBakedModel model = mc.getRenderItem().getItemModelMesher().getItemModel(stack);
 			if (model.isGui3d())
 				return model.getQuads(null, null, 0);
 			model = ForgeHooksClient.handleCameraTransforms(model, TransformType.GUI, false);
@@ -400,48 +400,47 @@ public class ClientUtils {
 				//up
 				ret.add(translate(rotate(bq, 270, 1, 0, 0), 0, .5f, 1));
 
-				TextureAtlasSprite tas = defaultTas;
 				Color col = new Color(color(stack));
 				float[] hsb = Color.RGBtoHSB(col.getRed(), col.getGreen(), col.getBlue(), null);
 				col = Color.getHSBColor(hsb[0], hsb[1], Math.min(1f, hsb[2] + .25f));
 				float r = col.getRed() / 255f, g = col.getGreen() / 255f, b = col.getBlue() / 255f, a = 1f;
 				//west
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						0, 1, 0, //
 						0, 0, 0, //
 						0, 0, 1, //
 						0, 1, 1, //
 						r, g, b, a));
 				//east
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						1, 1, 1, //
 						1, 0, 1, //
 						1, 0, 0, //
 						1, 1, 0, //
 						r, g, b, a));
 				//down
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						1, 0, 1, //
 						0, 0, 1, //
 						0, 0, 0, //
 						1, 0, 0, //
 						r, g, b, a));
 				//up
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						1, 1, 0, //
 						0, 1, 0, //
 						0, 1, 1, //
 						1, 1, 1, //
 						r, g, b, a));
 				//south
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						1, 1, 1, //
 						0, 1, 1, //
 						0, 0, 1, //
 						1, 0, 1, //
 						r, g, b, a));
 				//north
-				ret.add(createQuad(tas, //
+				ret.add(createQuad(defaultTas, //
 						1, 0, 0, //
 						0, 0, 0, //
 						0, 1, 0, //

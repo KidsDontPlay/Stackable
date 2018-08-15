@@ -91,6 +91,7 @@ public class Stackable {
 		snw.registerMessage(MessageConfigSync.class, MessageConfigSync.class, 0, Side.CLIENT);
 		snw.registerMessage(MessageKey.class, MessageKey.class, 1, Side.SERVER);
 		snw.registerMessage(MessageTOPTime.class, MessageTOPTime.class, 2, Side.CLIENT);
+		
 	}
 
 	@Mod.EventHandler
