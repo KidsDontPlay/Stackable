@@ -12,6 +12,7 @@ import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -39,6 +40,8 @@ public class TESRAnyPile extends TileEntitySpecialRenderer<TileAnyPile> {
 			GlStateManager.translate(0.5F, 0.5F, 0.5F);
 			int stackDepthMatrix = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
 			int stackDepthAttrib = GL11.glGetInteger(GL11.GL_ATTRIB_STACK_DEPTH);
+			Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
+			Minecraft.getMinecraft().getTextureManager().getTexture(TextureMap.LOCATION_BLOCKS_TEXTURE).setBlurMipmap(false, false);
 			try {
 				Minecraft.getMinecraft().getRenderItem().renderItem(s, model);
 			} catch (Exception e) {
