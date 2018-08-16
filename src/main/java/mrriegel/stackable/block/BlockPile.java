@@ -1,8 +1,10 @@
 package mrriegel.stackable.block;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mrriegel.stackable.client.ClientUtils;
 import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
@@ -12,7 +14,6 @@ import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.EntityEquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.BlockRenderLayer;
@@ -54,6 +55,7 @@ public class BlockPile extends Block {
 			return value.toString();
 		}
 	};
+	public static final ObjectOpenHashSet<UUID> ctrlMap = new ObjectOpenHashSet<>();
 
 	public BlockPile(String name, Material materialIn) {
 		super(materialIn);
@@ -148,10 +150,13 @@ public class BlockPile extends Block {
 		} else {
 			TileEntity t = worldIn.getTileEntity(pos);
 			if (t instanceof TileStackable && hand == EnumHand.MAIN_HAND && ((TileStackable) t).validItem(playerIn.getHeldItem(hand))) {
-				ItemStack rest = ((TileStackable) t).getMaster().inv.insertItem(playerIn.getHeldItem(hand), false);
+				boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
+				ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(playerIn.getHeldItem(hand), 1) : playerIn.getHeldItem(hand);
+				ItemStack rest = ((TileStackable) t).getMaster().inv.insertItem(toInsert, false);
+				int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();
 				worldIn.playSound(null, pos, ((TileStackable) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 				if (!playerIn.capabilities.isCreativeMode)
-					playerIn.setItemStackToSlot(EntityEquipmentSlot.MAINHAND, rest);
+					playerIn.getHeldItem(hand).shrink(inserted);
 				return true;
 			}
 			return false;

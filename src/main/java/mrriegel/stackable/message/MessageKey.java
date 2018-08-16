@@ -2,6 +2,7 @@ package mrriegel.stackable.message;
 
 import io.netty.buffer.ByteBuf;
 import mrriegel.stackable.Stackable;
+import mrriegel.stackable.block.BlockPile;
 import mrriegel.stackable.tile.TileIngotPile;
 import mrriegel.stackable.tile.TileStackable;
 import net.minecraft.block.Block;
@@ -53,6 +54,12 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 					TileStackable tile = ((TileStackable) t).getMaster();
 					tile.inv.cycle(!player.isSneaking());
 				}
+			} else if (message.key == 2) {
+				boolean pressed = message.pos.getX() == 1;
+				if (pressed)
+					BlockPile.ctrlMap.add(player.getUniqueID());
+				else
+					BlockPile.ctrlMap.remove(player.getUniqueID());
 			}
 		});
 		return null;

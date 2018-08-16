@@ -187,6 +187,8 @@ public class ClientUtils {
 				Stackable.snw.sendToServer(new MessageKey((byte) 1, rtr.getBlockPos()));
 			}
 		}
+		if (Keyboard.getEventKey() == (Minecraft.IS_RUNNING_ON_MAC ? Keyboard.KEY_LMETA : Keyboard.KEY_LCONTROL))
+			Stackable.snw.sendToServer(new MessageKey((byte) 2, new BlockPos(Keyboard.getEventKeyState() ? 1 : 0, 0, 0)));
 	}
 
 	@SubscribeEvent
