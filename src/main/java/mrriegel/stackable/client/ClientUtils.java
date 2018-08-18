@@ -53,6 +53,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemBlockSpecial;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumBlockRenderType;
@@ -347,8 +348,8 @@ public class ClientUtils {
 	}
 
 	public static List<BakedQuad> getBakedQuads(ItemStack stack) {
-		if (stack.getItem() instanceof ItemBlock) {
-			Block block = ((ItemBlock) stack.getItem()).getBlock();
+		Block block = stack.getItem() instanceof ItemBlock ? ((ItemBlock) stack.getItem()).getBlock() : stack.getItem() instanceof ItemBlockSpecial ? ((ItemBlockSpecial) stack.getItem()).getBlock() : null;
+		if (block != null) {
 			IBlockState state = null;
 			try {
 				state = block.getStateForPlacement(mc.world, BlockPos.ORIGIN, EnumFacing.UP, 0, 0, 0, stack.getMetadata(), mc.player, EnumHand.MAIN_HAND);
@@ -541,6 +542,7 @@ public class ClientUtils {
 	}
 
 	static Vector3f[] getCoords(BakedQuad quad) {
+		//Validate.isTrue(quad.getFormat()==DefaultVertexFormats.ITEM);
 		Vector3f[] ret = new Vector3f[4];
 		int[] data = quad.getVertexData();
 		ret[0] = new Vector3f(Float.intBitsToFloat(data[0]), Float.intBitsToFloat(data[1]), Float.intBitsToFloat(data[2]));
