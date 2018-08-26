@@ -72,9 +72,9 @@ public abstract class TileStackable extends TileEntity {
 	public long lastTake;
 
 	//cache
-	public AxisAlignedBB box = null;
-	public List<AxisAlignedBB> positions = null;
-	public List<ItemStack> items = null;
+	public AxisAlignedBB box;
+	public List<AxisAlignedBB> positions;
+	public List<ItemStack> items;
 	public Pair<Vec3i, AxisAlignedBB> raytrace;
 	private Vec3d eye, front;
 

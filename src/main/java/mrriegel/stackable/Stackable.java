@@ -121,7 +121,7 @@ public class Stackable {
 
 	@SubscribeEvent
 	public static void join(EntityJoinWorldEvent event) {
-		if (event.getEntity() instanceof EntityPlayerMP /*&& event.getEntity().getServer().isDedicatedServer()*/) {
+		if (event.getEntity() instanceof EntityPlayerMP) {
 			MessageConfigSync p = new MessageConfigSync();
 			p.nbt.setInteger("iii", Stackable.itemsPerItemI);
 			p.nbt.setInteger("x", Stackable.sizeX);

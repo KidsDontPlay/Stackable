@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.vecmath.Point2f;
 
+import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.util.vector.Matrix4f;
@@ -357,7 +358,7 @@ public class ClientUtils {
 				state = block.getStateFromMeta(stack.getMetadata());
 			}
 			IBlockState sstate = state;
-			if (block.getRenderType(state) != EnumBlockRenderType.MODEL)
+			if (state.getRenderType() != EnumBlockRenderType.MODEL)
 				return Collections.emptyList();
 			IBakedModel model = mc.getBlockRendererDispatcher().getModelForState(state);
 			return Streams.concat(Stream.of((EnumFacing) null), Arrays.stream(EnumFacing.VALUES)).flatMap(f -> model.getQuads(sstate, f, 0).stream()).map(bq -> {
@@ -542,7 +543,7 @@ public class ClientUtils {
 	}
 
 	static Vector3f[] getCoords(BakedQuad quad) {
-		//Validate.isTrue(quad.getFormat()==DefaultVertexFormats.ITEM);
+		Validate.isTrue(quad.getFormat() == DefaultVertexFormats.ITEM);
 		Vector3f[] ret = new Vector3f[4];
 		int[] data = quad.getVertexData();
 		ret[0] = new Vector3f(Float.intBitsToFloat(data[0]), Float.intBitsToFloat(data[1]), Float.intBitsToFloat(data[2]));

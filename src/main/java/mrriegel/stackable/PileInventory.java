@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import mrriegel.stackable.tile.TileStackable;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -37,8 +38,8 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		if (i <= 0)
 			return ItemStack.EMPTY;
 		if (!simulate) {
-			inventory.addTo(stack, -i);
-			if (inventory.getInt(stack) == 0) {
+			int old = inventory.addTo(stack, -i);
+			if (old - i == 0) {
 				inventory.removeInt(stack);
 				if (inventory.isEmpty()) {
 					new Thread(() -> tile.getWorld().getMinecraftServer().addScheduledTask(() -> tile.getWorld().setBlockToAir(tile.getPos()))).start();
@@ -59,12 +60,12 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 			List<TileStackable> l = tile.getAllPileBlocks();
 			if (l.size() >= tile.maxPileHeight())
 				break;
-			TileStackable last = l.get(l.size() - 1);
-			BlockPos neu = last.getPos().up();
-			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState())) {
+			TileStackable highest = l.get(l.size() - 1);
+			BlockPos neu = highest.getPos().up();
+			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState(), simulate ? 0 : 3)) {
 				TileStackable n = (TileStackable) tile.getWorld().getTileEntity(neu);
-				added.add(n.getPos());
 				n.masterPos = tile.getPos();
+				added.add(neu);
 				canInsert = freeItems(stack);
 			} else
 				noSpace = true;
@@ -75,7 +76,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		}
 		if (simulate)
 			for (BlockPos p : added)
-				tile.getWorld().setBlockToAir(p);
+				tile.getWorld().setBlockState(p, Blocks.AIR.getDefaultState(), 0);
 		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
 	}
 
@@ -125,8 +126,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 						value -= max;
 					} else {
 						occuItems++;
-						//TODO think
-						free = value % max;
+						free = max - (value % max);
 						break;
 					}
 				}
