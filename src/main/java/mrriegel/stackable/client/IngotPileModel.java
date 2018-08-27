@@ -3,7 +3,7 @@ package mrriegel.stackable.client;
 import java.util.List;
 
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -11,7 +11,7 @@ import net.minecraft.util.math.AxisAlignedBB;
 public class IngotPileModel extends PileModel {
 
 	@Override
-	protected void addQuads(List<BakedQuad> quads, TileStackable tile) {
+	protected void addQuads(List<BakedQuad> quads, TilePile tile) {
 		List<ItemStack> stacks = tile.itemList();
 		List<AxisAlignedBB> aabbs = tile.itemBoxes();
 		int size = Math.min(stacks.size(), aabbs.size());

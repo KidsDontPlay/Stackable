@@ -9,7 +9,7 @@ import java.util.WeakHashMap;
 import java.util.stream.Collectors;
 
 import mrriegel.stackable.block.BlockPile;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -40,7 +40,7 @@ public abstract class PileModel implements IBakedModel {
 		}
 	}
 
-	private final Map<TileStackable, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
+	private final Map<TilePile, List<BakedQuad>> cachedQuads = new WeakHashMap<>();
 
 	@Override
 	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
@@ -50,7 +50,7 @@ public abstract class PileModel implements IBakedModel {
 		if ("getDamageModel".equals(ste.getMethodName())) {
 			return brokenQuads;
 		}
-		TileStackable tile = (TileStackable) ((IExtendedBlockState) state).getValue(BlockPile.TILE_PROP);
+		TilePile tile = (TilePile) ((IExtendedBlockState) state).getValue(BlockPile.TILE_PROP);
 		List<BakedQuad> quads = new ArrayList<>();
 		if (tile != null) {
 			//cachedQuads.clear();
@@ -64,7 +64,7 @@ public abstract class PileModel implements IBakedModel {
 		return quads;
 	}
 
-	protected abstract void addQuads(List<BakedQuad> quads, TileStackable tile);
+	protected abstract void addQuads(List<BakedQuad> quads, TilePile tile);
 
 	@Override
 	public boolean isAmbientOcclusion() {

@@ -10,7 +10,7 @@ import mrriegel.stackable.Stackable;
 import mrriegel.stackable.block.BlockAnyPile;
 import mrriegel.stackable.block.BlockIngotPile;
 import mrriegel.stackable.client.ClientUtils;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.TextFormatting;
@@ -38,9 +38,9 @@ public class WailaPlugin {
 
 			@Override
 			public List<String> getWailaBody(ItemStack itemStack, List<String> tooltip, IWailaDataAccessor accessor, IWailaConfigHandler config) {
-				ItemStack s = ((TileStackable) accessor.getTileEntity()).lookingStack(accessor.getPlayer());
+				ItemStack s = ((TilePile) accessor.getTileEntity()).lookingStack(accessor.getPlayer());
 				if (!s.isEmpty())
-					tooltip.add(TextFormatting.YELLOW + TileStackable.getOverlayText(s, (TileStackable) accessor.getTileEntity()));
+					tooltip.add(TextFormatting.YELLOW + TilePile.getOverlayText(s, (TilePile) accessor.getTileEntity()));
 				return tooltip;
 			}
 

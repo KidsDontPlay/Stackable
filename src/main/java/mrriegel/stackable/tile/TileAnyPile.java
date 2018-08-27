@@ -15,7 +15,7 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 
-public class TileAnyPile extends TileStackable {
+public class TileAnyPile extends TilePile {
 	public static int maxItemAmount = 0;
 	public static BiMap<Integer, Vec3i> coordMap = null;
 

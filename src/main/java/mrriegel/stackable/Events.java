@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -28,15 +28,15 @@ public class Events {
 	public static void tick(WorldTickEvent event) {
 		if (event.phase == Phase.END && !event.world.isRemote) {
 			try {
-				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TileStackable && ((TileStackable) t).isMaster).forEach(t -> {
-					if (!((TileStackable) t).needSync && (event.world.getTotalWorldTime() + t.getPos().hashCode()) % 100 != 0)
+				event.world.loadedTileEntityList.stream().filter(t -> t instanceof TilePile && ((TilePile) t).isMaster).forEach(t -> {
+					if (!((TilePile) t).needSync && (event.world.getTotalWorldTime() + t.getPos().hashCode()) % 100 != 0)
 						return;
-					((TileStackable) t).needSync = false;
+					((TilePile) t).needSync = false;
 					Set<EntityPlayerMP> players = new HashSet<>();
-					List<TileStackable> tiles = ((TileStackable) t).getAllPileBlocks();
-					for (TileStackable tile : tiles)
+					List<TilePile> tiles = ((TilePile) t).getAllPileBlocks();
+					for (TilePile tile : tiles)
 						players.addAll(event.world.getEntitiesWithinAABB(EntityPlayerMP.class, new AxisAlignedBB(tile.getPos().add(-11, -11, -11), tile.getPos().add(11, 11, 11))));
-					for (TileStackable tile : tiles) {
+					for (TilePile tile : tiles) {
 						tile.markDirty();
 						for (EntityPlayerMP player : players) {
 							SPacketUpdateTileEntity p = tile.getUpdatePacket();
@@ -59,20 +59,20 @@ public class Events {
 		EntityPlayer player = event.getEntityPlayer();
 		ItemStack h = player.getHeldItemMainhand();
 		long time = System.currentTimeMillis();
-		if (t instanceof TileStackable && !h.getItem().getToolClasses(h).contains("pickaxe")) {
+		if (t instanceof TilePile && !h.getItem().getToolClasses(h).contains("pickaxe")) {
 			event.setCanceled(true);
 			event.setUseBlock(Result.DENY);
 			event.setUseItem(Result.DENY);
-			if (event.getWorld().isRemote || ((TileStackable) t).lastTake >= time - 150L)
+			if (event.getWorld().isRemote || ((TilePile) t).lastTake >= time - 150L)
 				return;
-			ItemStack target = ((TileStackable) t).lookingStack(player);
+			ItemStack target = ((TilePile) t).lookingStack(player);
 			if (target.isEmpty())
 				return;
-			ItemStack s = ((TileStackable) t).getMaster().inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
+			ItemStack s = ((TilePile) t).getMaster().inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
 			if (!s.isEmpty()) {
-				((TileStackable) t).lastTake = time;
+				((TilePile) t).lastTake = time;
 				EntityItem ei = new EntityItem(t.getWorld(), 0, 0, 0, s);
-				AxisAlignedBB aabb = ((TileStackable) t).lookingPos(player).getRight();
+				AxisAlignedBB aabb = ((TilePile) t).lookingPos(player).getRight();
 				if (aabb != null) {
 					aabb = aabb.offset(t.getPos());
 					ei.setPosition(aabb.minX, aabb.minY, aabb.minZ);

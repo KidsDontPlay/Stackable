@@ -31,7 +31,7 @@ import mrriegel.stackable.Stackable;
 import mrriegel.stackable.block.BlockPile;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -93,8 +93,8 @@ import net.minecraftforge.oredict.OreDictionary;
 @EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
 public class ClientUtils {
 
-	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TileStackable.strategy);
-	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TileStackable.strategy);
+	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TilePile.strategy);
+	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TilePile.strategy);
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, Stackable.NAME);
@@ -198,7 +198,7 @@ public class ClientUtils {
 		RayTraceResult rtr = event.getTarget();
 		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
-			if (t instanceof TileStackable) {
+			if (t instanceof TilePile) {
 				ItemStack h = mc.player.getHeldItemMainhand();
 				if (h.getItem().getToolClasses(h).contains("pickaxe"))
 					return;
@@ -212,12 +212,12 @@ public class ClientUtils {
 				double d3 = player.lastTickPosX + (player.posX - player.lastTickPosX) * partialTicks;
 				double d4 = player.lastTickPosY + (player.posY - player.lastTickPosY) * partialTicks;
 				double d5 = player.lastTickPosZ + (player.posZ - player.lastTickPosZ) * partialTicks;
-				Pair<Vec3i, AxisAlignedBB> p = ((TileStackable) t).lookingPos(mc.player);
+				Pair<Vec3i, AxisAlignedBB> p = ((TilePile) t).lookingPos(mc.player);
 				if (p.getRight() != null) {
 					boolean stackdepend = false;
 					float f1, f2, f3;
 					if (stackdepend) {
-						Color c = new Color(color(((TileStackable) t).itemList().get(((TileStackable) t).getCoordMap().inverse().get(p.getLeft()))));
+						Color c = new Color(color(((TilePile) t).itemList().get(((TilePile) t).getCoordMap().inverse().get(p.getLeft()))));
 						float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
 						//						hsb[2]=.9f;
 						//						c=new Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]));
@@ -250,14 +250,14 @@ public class ClientUtils {
 			RayTraceResult rtr = mc.objectMouseOver;
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
-				if (t instanceof TileStackable) {
+				if (t instanceof TilePile) {
 					ItemStack h = mc.player.getHeldItemMainhand();
 					if (h.getItem().getToolClasses(h).contains("pickaxe"))
 						return;
-					ItemStack s = ((TileStackable) t).lookingStack(mc.player);
+					ItemStack s = ((TilePile) t).lookingStack(mc.player);
 					if (!s.isEmpty()) {
 						ScaledResolution sr = event.getResolution();
-						String text = TileStackable.getOverlayText(s, (TileStackable) t);
+						String text = TilePile.getOverlayText(s, (TilePile) t);
 						int textWidth = mc.fontRenderer.getStringWidth(text);
 						int x = sr.getScaledWidth() / 2 - textWidth / 2, y = sr.getScaledHeight() / 2 + mc.fontRenderer.FONT_HEIGHT + 5;
 						mc.fontRenderer.drawString(TextFormatting.YELLOW + text, x, y, 0, true);

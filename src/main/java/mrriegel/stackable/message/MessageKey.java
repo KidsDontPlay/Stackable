@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBuf;
 import mrriegel.stackable.Stackable;
 import mrriegel.stackable.block.BlockPile;
 import mrriegel.stackable.tile.TileIngotPile;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -40,7 +40,7 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 				if (block != null) {
 					BlockPos newPos = message.pos.up();
 					if (player.world.isAirBlock(newPos) && player.world.setBlockState(newPos, block.getDefaultState(), 2)) {
-						TileStackable t = (TileStackable) player.world.getTileEntity(newPos);
+						TilePile t = (TilePile) player.world.getTileEntity(newPos);
 						t.isMaster = true;
 						player.world.notifyNeighborsOfStateChange(newPos, block, true);
 						block.onBlockActivated(player.world, newPos, block.getDefaultState(), player, EnumHand.MAIN_HAND, EnumFacing.UP, 0, 0, 0);
@@ -48,8 +48,8 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 				}
 			} else if (message.key == 1) {
 				TileEntity t = player.world.getTileEntity(message.pos);
-				if (t instanceof TileStackable) {
-					TileStackable tile = ((TileStackable) t).getMaster();
+				if (t instanceof TilePile) {
+					TilePile tile = ((TilePile) t).getMaster();
 					tile.inv.cycle(!player.isSneaking());
 				}
 			} else if (message.key == 2) {

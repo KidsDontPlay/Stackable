@@ -6,7 +6,7 @@ import java.util.stream.IntStream;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mrriegel.stackable.client.ClientUtils;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
@@ -113,24 +113,24 @@ public class BlockPile extends Block {
 	@Override
 	public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player) {
 		TileEntity t = world.getTileEntity(pos);
-		if (t instanceof TileStackable)
-			return ItemHandlerHelper.copyStackWithSize(((TileStackable) t).lookingStack(player), 1);
+		if (t instanceof TilePile)
+			return ItemHandlerHelper.copyStackWithSize(((TilePile) t).lookingStack(player), 1);
 		return ItemStack.EMPTY;
 	}
 
 	@Override
 	public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess source, BlockPos pos) {
 		TileEntity t = source.getTileEntity(pos);
-		if (t instanceof TileStackable)
-			return ((TileStackable) t).getBox();
+		if (t instanceof TilePile)
+			return ((TilePile) t).getBox();
 		return FULL_BLOCK_AABB;
 	}
 
 	@Override
 	public void addCollisionBoxToList(IBlockState state, World worldIn, BlockPos pos, AxisAlignedBB entityBox, List<AxisAlignedBB> collidingBoxes, Entity entityIn, boolean isActualState) {
 		TileEntity t = worldIn.getTileEntity(pos);
-		if (t instanceof TileStackable) {
-			for (AxisAlignedBB aabb : ((TileStackable) t).itemBoxes())
+		if (t instanceof TilePile) {
+			for (AxisAlignedBB aabb : ((TilePile) t).itemBoxes())
 				addCollisionBoxToList(pos, entityBox, collidingBoxes, aabb);
 		} else
 			super.addCollisionBoxToList(state, worldIn, pos, entityBox, collidingBoxes, entityIn, isActualState);
@@ -139,7 +139,7 @@ public class BlockPile extends Block {
 	@Override
 	public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos) {
 		TileEntity t = worldIn.getTileEntity(pos);
-		if (worldIn.isAirBlock(pos.down()) && t instanceof TileStackable && !((TileStackable) t).isMaster)
+		if (worldIn.isAirBlock(pos.down()) && t instanceof TilePile && !((TilePile) t).isMaster)
 			worldIn.setBlockToAir(pos);
 	}
 
@@ -149,12 +149,12 @@ public class BlockPile extends Block {
 			return true;
 		} else {
 			TileEntity t = worldIn.getTileEntity(pos);
-			if (t instanceof TileStackable && hand == EnumHand.MAIN_HAND && ((TileStackable) t).validItem(playerIn.getHeldItem(hand))) {
+			if (t instanceof TilePile && hand == EnumHand.MAIN_HAND && ((TilePile) t).validItem(playerIn.getHeldItem(hand))) {
 				boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
 				ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(playerIn.getHeldItem(hand), 1) : playerIn.getHeldItem(hand);
-				ItemStack rest = ((TileStackable) t).getMaster().inv.insertItem(toInsert, false);
+				ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(toInsert, false);
 				int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();
-				worldIn.playSound(null, pos, ((TileStackable) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
+				worldIn.playSound(null, pos, ((TilePile) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 				if (!playerIn.capabilities.isCreativeMode)
 					playerIn.getHeldItem(hand).shrink(inserted);
 				return true;
@@ -166,17 +166,17 @@ public class BlockPile extends Block {
 	@Override
 	public void breakBlock(World worldIn, BlockPos pos, IBlockState state) {
 		TileEntity t = worldIn.getTileEntity(pos);
-		if (t instanceof TileStackable) {
-			TileStackable tile = (TileStackable) t;
+		if (t instanceof TilePile) {
+			TilePile tile = (TilePile) t;
 			if (tile.isMaster) {
 				tile.inv.items = null;
 				IntStream.range(0, tile.inv.getSlots()).forEach(i -> spawnAsEntity(worldIn, pos, tile.inv.getStackInSlot(i)));
 				worldIn.removeTileEntity(pos);
 			} else {
 				if (tile.getMaster() != null) {
-					List<TileStackable> ts = tile.getAllPileBlocks();
+					List<TilePile> ts = tile.getAllPileBlocks();
 					for (int i = ts.size() - 1; i >= 1; i--) {
-						TileStackable t2 = ts.get(i);
+						TilePile t2 = ts.get(i);
 						for (ItemStack s : t2.itemList()) {
 							spawnAsEntity(worldIn, pos, t2.getMaster().inv.extractItem(s, s.getCount(), false));
 						}

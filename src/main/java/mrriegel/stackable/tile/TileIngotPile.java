@@ -16,7 +16,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraftforge.oredict.OreDictionary;
 
-public class TileIngotPile extends TileStackable {
+public class TileIngotPile extends TilePile {
 
 	public static int maxIngotAmount = 0;
 	public static BiMap<Integer, Vec3i> coordMap = null;

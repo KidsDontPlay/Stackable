@@ -32,7 +32,7 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
-public abstract class TileStackable extends TileEntity {
+public abstract class TilePile extends TileEntity {
 	public static final Strategy<ItemStack> strategy = new Strategy<ItemStack>() {
 
 		@Override
@@ -58,8 +58,8 @@ public abstract class TileStackable extends TileEntity {
 		}
 	};
 
-	public static String getOverlayText(ItemStack s, TileStackable t) {
-		TileStackable m = t.getMaster();
+	public static String getOverlayText(ItemStack s, TilePile t) {
+		TilePile m = t.getMaster();
 		return m.inv.inventory.getInt(s) + "x " + s.getDisplayName();
 	}
 
@@ -121,7 +121,7 @@ public abstract class TileStackable extends TileEntity {
 	public void change() {
 		if (world == null)
 			return;
-		for (TileStackable t : getAllPileBlocks()) {
+		for (TilePile t : getAllPileBlocks()) {
 			if (t.inv != null)
 				t.inv.items = null;
 			t.changedClient = true;
@@ -181,9 +181,9 @@ public abstract class TileStackable extends TileEntity {
 
 	public abstract int maxPileHeight();
 
-	public List<TileStackable> getAllPileBlocks() {
-		List<TileStackable> l = new ArrayList<>();
-		TileStackable master = getMaster();
+	public List<TilePile> getAllPileBlocks() {
+		List<TilePile> l = new ArrayList<>();
+		TilePile master = getMaster();
 		Class<?> masterClass = master.getClass();
 		Validate.isTrue(masterClass == getClass());
 		l.add(master);
@@ -196,7 +196,7 @@ public abstract class TileStackable extends TileEntity {
 			}
 			TileEntity t = world.getTileEntity(p);
 			if (t != null && t.getClass() == masterClass) {
-				TileStackable tile = (TileStackable) t;
+				TilePile tile = (TilePile) t;
 				if (!tile.isMaster && master.getPos().equals(tile.masterPos))
 					l.add(tile);
 				else
@@ -211,8 +211,8 @@ public abstract class TileStackable extends TileEntity {
 		return pos.getY() - getMaster().pos.getY();
 	}
 
-	public TileStackable getMaster() {
-		return isMaster ? this : masterPos == null ? null : (TileStackable) world.getTileEntity(masterPos);
+	public TilePile getMaster() {
+		return isMaster ? this : masterPos == null ? null : (TilePile) world.getTileEntity(masterPos);
 	}
 
 	public AxisAlignedBB getBox() {
@@ -238,7 +238,7 @@ public abstract class TileStackable extends TileEntity {
 	public List<ItemStack> itemList() {
 		if (items != null)
 			return items;
-		TileStackable master = getMaster();
+		TilePile master = getMaster();
 		if (master == null)
 			return Collections.emptyList();
 		List<ItemStack> itemList = new ArrayList<>();

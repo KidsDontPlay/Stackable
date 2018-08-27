@@ -10,7 +10,7 @@ import org.apache.commons.lang3.Validate;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import mrriegel.stackable.tile.TileStackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -22,12 +22,12 @@ import net.minecraftforge.items.ItemHandlerHelper;
 
 public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
 
-	private final TileStackable tile;
-	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TileStackable.strategy);
+	private final TilePile tile;
+	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TilePile.strategy);
 	public List<ItemStack> items = null;
 	boolean threadStarted = false;
 
-	public PileInventory(TileStackable tile) {
+	public PileInventory(TilePile tile) {
 		this.tile = tile;
 	}
 
@@ -57,13 +57,13 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		boolean noSpace = false;
 		Set<BlockPos> added = new HashSet<>();
 		while (canInsert < stack.getCount() && !noSpace) {
-			List<TileStackable> l = tile.getAllPileBlocks();
+			List<TilePile> l = tile.getAllPileBlocks();
 			if (l.size() >= tile.maxPileHeight())
 				break;
-			TileStackable highest = l.get(l.size() - 1);
+			TilePile highest = l.get(l.size() - 1);
 			BlockPos neu = highest.getPos().up();
 			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState(), simulate ? 0 : 3)) {
-				TileStackable n = (TileStackable) tile.getWorld().getTileEntity(neu);
+				TilePile n = (TilePile) tile.getWorld().getTileEntity(neu);
 				n.masterPos = tile.getPos();
 				added.add(neu);
 				canInsert = freeItems(stack);
@@ -94,7 +94,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 	}
 
 	private void onChange() {
-		for (TileStackable t : tile.getAllPileBlocks()) {
+		for (TilePile t : tile.getAllPileBlocks()) {
 			t.needSync = true;
 			t.markDirty();
 			t.box = null;
@@ -118,7 +118,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		int free = 0;
 		int occuItems = 0;
 		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
-			if (TileStackable.strategy.equals(e.getKey(), stack)) {
+			if (TilePile.strategy.equals(e.getKey(), stack)) {
 				int value = e.getIntValue();
 				while (value > 0) {
 					if (value >= max) {
