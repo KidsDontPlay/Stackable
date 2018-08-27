@@ -27,7 +27,6 @@ public class AnyPileModel extends PileModel {
 				q = ClientUtils.translate(q, (float) aabb.minX + add / 2, (float) aabb.minY + add / 2, (float) aabb.minZ + add / 2);
 				quads.add(q);
 			}
-
 		}
 	}
 

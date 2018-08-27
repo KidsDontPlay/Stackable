@@ -82,11 +82,6 @@ public class TileIngotPile extends TileStackable {
 	}
 
 	@Override
-	public Vec3i getDimension() {
-		return new Vec3i(Stackable.sizeX, Stackable.sizeY, Stackable.sizeZ);
-	}
-
-	@Override
 	public int maxPileHeight() {
 		return Stackable.maxPileHeightI;
 	}

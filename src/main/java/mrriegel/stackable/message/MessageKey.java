@@ -39,13 +39,11 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 				Block block = TileIngotPile.validItem1(main) ? Stackable.ingots : !main.isEmpty() ? Stackable.any : null;
 				if (block != null) {
 					BlockPos newPos = message.pos.up();
-					if (player.world.isAirBlock(newPos)) {
-						if (player.world.setBlockState(newPos, block.getDefaultState(), 2)) {
-							TileStackable t = (TileStackable) player.world.getTileEntity(newPos);
-							t.isMaster = true;
-							player.world.notifyNeighborsOfStateChange(newPos, block, true);
-							block.onBlockActivated(player.world, newPos, block.getDefaultState(), player, EnumHand.MAIN_HAND, EnumFacing.UP, 0, 0, 0);
-						}
+					if (player.world.isAirBlock(newPos) && player.world.setBlockState(newPos, block.getDefaultState(), 2)) {
+						TileStackable t = (TileStackable) player.world.getTileEntity(newPos);
+						t.isMaster = true;
+						player.world.notifyNeighborsOfStateChange(newPos, block, true);
+						block.onBlockActivated(player.world, newPos, block.getDefaultState(), player, EnumHand.MAIN_HAND, EnumFacing.UP, 0, 0, 0);
 					}
 				}
 			} else if (message.key == 1) {

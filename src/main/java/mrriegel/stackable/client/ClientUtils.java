@@ -219,6 +219,11 @@ public class ClientUtils {
 					if (stackdepend) {
 						Color c = new Color(color(((TileStackable) t).itemList().get(((TileStackable) t).getCoordMap().inverse().get(p.getLeft()))));
 						float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+						//						hsb[2]=.9f;
+						//						c=new Color(Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]));
+						//						f1=c.getRed()/255f;
+						//						f2=c.getGreen()/255f;
+						//						f3=c.getBlue()/255f;
 						if (hsb[2] < .5)
 							f1 = f2 = f3 = 1f;
 						else
@@ -543,7 +548,7 @@ public class ClientUtils {
 	}
 
 	static Vector3f[] getCoords(BakedQuad quad) {
-		Validate.isTrue(quad.getFormat() == DefaultVertexFormats.ITEM);
+		Validate.isTrue(DefaultVertexFormats.POSITION_3F.equals(quad.getFormat().getElements().get(0)), "Wrong VertexFormat! " + quad.getClass() + " (" + quad.getFormat() + ") (" + quad.getSprite() + ")");
 		Vector3f[] ret = new Vector3f[4];
 		int[] data = quad.getVertexData();
 		ret[0] = new Vector3f(Float.intBitsToFloat(data[0]), Float.intBitsToFloat(data[1]), Float.intBitsToFloat(data[2]));

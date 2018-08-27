@@ -13,7 +13,6 @@ import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.LeftClickBlock;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.Event.Result;
@@ -40,11 +39,9 @@ public class Events {
 					for (TileStackable tile : tiles) {
 						tile.markDirty();
 						for (EntityPlayerMP player : players) {
-							if (player.ticksExisted > 20 || true) {
-								SPacketUpdateTileEntity p = tile.getUpdatePacket();
-								if (p != null)
-									player.connection.sendPacket(p);
-							}
+							SPacketUpdateTileEntity p = tile.getUpdatePacket();
+							if (p != null)
+								player.connection.sendPacket(p);
 						}
 					}
 				});
@@ -74,8 +71,7 @@ public class Events {
 			ItemStack s = ((TileStackable) t).getMaster().inv.extractItem(target, player.isSneaking() ? 64 : 1, false);
 			if (!s.isEmpty()) {
 				((TileStackable) t).lastTake = time;
-				Vec3d point = player.getPositionEyes(1F).add(player.getLookVec().scale(1.5));
-				EntityItem ei = new EntityItem(t.getWorld(), point.x, point.y, point.z, s);
+				EntityItem ei = new EntityItem(t.getWorld(), 0, 0, 0, s);
 				AxisAlignedBB aabb = ((TileStackable) t).lookingPos(player).getRight();
 				if (aabb != null) {
 					aabb = aabb.offset(t.getPos());
