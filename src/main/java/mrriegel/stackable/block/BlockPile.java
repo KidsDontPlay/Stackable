@@ -11,7 +11,9 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.BlockStateContainer;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
@@ -24,6 +26,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
@@ -154,6 +157,7 @@ public class BlockPile extends Block {
 						ItemStack s = playerInv.getStackInSlot(i);
 						if (s.isItemEqual(looking)) {
 							ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(playerInv.extractItem(i, 64, false), false);
+							worldIn.playSound(null, pos, ((TilePile) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 							if (!rest.isEmpty()) {
 								playerInv.insertItem(i, rest, false);
 							}
@@ -193,4 +197,23 @@ public class BlockPile extends Block {
 		worldIn.removeTileEntity(pos);
 	}
 
+	@Override
+	public boolean addHitEffects(IBlockState state, World worldObj, RayTraceResult target, ParticleManager manager) {
+		return true;
+	}
+
+	@Override
+	public boolean addDestroyEffects(World world, BlockPos pos, ParticleManager manager) {
+		return true;
+	}
+
+	@Override
+	public boolean addLandingEffects(IBlockState state, WorldServer worldObj, BlockPos blockPosition, IBlockState iblockstate, EntityLivingBase entity, int numberOfParticles) {
+		return true;
+	}
+
+	@Override
+	public boolean addRunningEffects(IBlockState state, World world, BlockPos pos, Entity entity) {
+		return true;
+	}
 }
