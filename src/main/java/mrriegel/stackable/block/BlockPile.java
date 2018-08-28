@@ -5,7 +5,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
-import mrriegel.stackable.client.ClientUtils;
 import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -28,11 +27,9 @@ import net.minecraft.world.World;
 import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
-import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
 public class BlockPile extends Block {
-	public static final IBlockState DAMAGE = new Block(Material.AIR).getDefaultState();
 	public static final IUnlistedProperty<TileEntity> TILE_PROP = new IUnlistedProperty<TileEntity>() {
 
 		@Override
@@ -68,16 +65,6 @@ public class BlockPile extends Block {
 	@Override
 	public boolean hasTileEntity(IBlockState state) {
 		return true;
-	}
-
-	@Override
-	public IBlockState getActualState(IBlockState state, IBlockAccess worldIn, BlockPos pos) {
-		if (worldIn instanceof World ? ((World) worldIn).isRemote : FMLCommonHandler.instance().getEffectiveSide().isClient()) {
-			if (ClientUtils.brokenBlocks.containsKey(pos) && false) {
-				return DAMAGE;
-			}
-		}
-		return super.getActualState(state, worldIn, pos);
 	}
 
 	@Override

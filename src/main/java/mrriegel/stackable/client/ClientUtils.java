@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,11 +23,9 @@ import com.google.common.collect.Streams;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.block.BlockPile;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TilePile;
@@ -36,7 +33,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
-import net.minecraft.client.renderer.BlockModelShapes;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -50,9 +46,7 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemBlockSpecial;
 import net.minecraft.item.ItemStack;
@@ -61,8 +55,6 @@ import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
@@ -70,8 +62,6 @@ import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraft.world.IWorldEventListener;
-import net.minecraft.world.World;
 import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
@@ -80,13 +70,11 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.event.world.WorldEvent.Load;
 import net.minecraftforge.fml.client.config.GuiUtils;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent.KeyInputEvent;
-import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.oredict.OreDictionary;
 
@@ -101,7 +89,6 @@ public class ClientUtils {
 	public static final KeyBinding CYCLE_KEY = new KeyBinding("key.stackable.cycle", KeyConflictContext.IN_GAME, Keyboard.KEY_C, Stackable.NAME);
 	private static Minecraft mc;
 	static TextureAtlasSprite defaultTas;
-	public static Object2IntOpenHashMap<BlockPos> brokenBlocks = new Object2IntOpenHashMap<>();
 	public static long wailaTime = 0, topTime = 0;
 
 	public static int color(ItemStack stack) {
@@ -172,7 +159,6 @@ public class ClientUtils {
 
 	public static void init() {
 		PileModel.init();
-		brokenBlocks.defaultReturnValue(-1);
 		ClientRegistry.registerKeyBinding(PLACE_KEY);
 		ClientRegistry.registerKeyBinding(CYCLE_KEY);
 		ClientRegistry.bindTileEntitySpecialRenderer(TileAnyPile.class, new TESRAnyPile());
@@ -286,72 +272,6 @@ public class ClientUtils {
 		mc = Minecraft.getMinecraft();
 		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.ingots.getRegistryName().toString()), new IngotPileModel());
 		event.getModelRegistry().putObject(new ModelResourceLocation(Stackable.any.getRegistryName().toString()), new AnyPileModel());
-	}
-
-	@SubscribeEvent
-	public static void load(Load event) {
-		Map<IBlockState, IBakedModel> bakedModelStore = ReflectionHelper.getPrivateValue(BlockModelShapes.class, mc.getBlockRendererDispatcher().getBlockModelShapes(), "bakedModelStore", "field_178129_a");
-		bakedModelStore.put(BlockPile.DAMAGE, mc.getBlockRendererDispatcher().getModelForState(Blocks.COBBLESTONE.getDefaultState()));
-		brokenBlocks.clear();
-		event.getWorld().addEventListener(new IWorldEventListener() {
-
-			@Override
-			public void spawnParticle(int id, boolean ignoreRange, boolean p_190570_3_, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
-			}
-
-			@Override
-			public void spawnParticle(int particleID, boolean ignoreRange, double xCoord, double yCoord, double zCoord, double xSpeed, double ySpeed, double zSpeed, int... parameters) {
-			}
-
-			@Override
-			public void sendBlockBreakProgress(int breakerId, BlockPos pos, int progress) {
-				if (progress >= 0 && progress < 10) {
-					int destroyblockprogress = brokenBlocks.getInt(pos);
-					if (destroyblockprogress == -1) {
-						brokenBlocks.clear();
-					}
-					brokenBlocks.put(pos, progress);
-				} else {
-					brokenBlocks.removeInt(pos);
-				}
-			}
-
-			@Override
-			public void playSoundToAllNearExcept(EntityPlayer player, SoundEvent soundIn, SoundCategory category, double x, double y, double z, float volume, float pitch) {
-			}
-
-			@Override
-			public void playRecord(SoundEvent soundIn, BlockPos pos) {
-			}
-
-			@Override
-			public void playEvent(EntityPlayer player, int type, BlockPos blockPosIn, int data) {
-			}
-
-			@Override
-			public void onEntityRemoved(Entity entityIn) {
-			}
-
-			@Override
-			public void onEntityAdded(Entity entityIn) {
-			}
-
-			@Override
-			public void notifyLightSet(BlockPos pos) {
-			}
-
-			@Override
-			public void notifyBlockUpdate(World worldIn, BlockPos pos, IBlockState oldState, IBlockState newState, int flags) {
-			}
-
-			@Override
-			public void markBlockRangeForRenderUpdate(int x1, int y1, int z1, int x2, int y2, int z2) {
-			}
-
-			@Override
-			public void broadcastSound(int soundID, BlockPos pos, int data) {
-			}
-		});
 	}
 
 	public static List<BakedQuad> getBakedQuads(ItemStack stack) {

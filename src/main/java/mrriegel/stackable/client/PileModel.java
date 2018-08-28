@@ -46,7 +46,7 @@ public abstract class PileModel implements IBakedModel {
 	public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
 		if (side != null)
 			return Collections.emptyList();
-		StackTraceElement ste = Thread.currentThread().getStackTrace()[4];
+		StackTraceElement ste = new Exception().getStackTrace()[3];
 		if ("getDamageModel".equals(ste.getMethodName())) {
 			return brokenQuads;
 		}
