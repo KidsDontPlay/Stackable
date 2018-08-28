@@ -28,6 +28,7 @@ import net.minecraftforge.common.property.ExtendedBlockState;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.common.property.IUnlistedProperty;
 import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraftforge.items.wrapper.PlayerMainInvWrapper;
 
 public class BlockPile extends Block {
 	public static final IUnlistedProperty<TileEntity> TILE_PROP = new IUnlistedProperty<TileEntity>() {
@@ -136,15 +137,30 @@ public class BlockPile extends Block {
 			return true;
 		} else {
 			TileEntity t = worldIn.getTileEntity(pos);
-			if (t instanceof TilePile && hand == EnumHand.MAIN_HAND && ((TilePile) t).validItem(playerIn.getHeldItem(hand))) {
-				boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
-				ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(playerIn.getHeldItem(hand), 1) : playerIn.getHeldItem(hand);
-				ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(toInsert, false);
-				int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();
-				worldIn.playSound(null, pos, ((TilePile) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
-				if (!playerIn.capabilities.isCreativeMode)
-					playerIn.getHeldItem(hand).shrink(inserted);
-				return true;
+			if (t instanceof TilePile && hand == EnumHand.MAIN_HAND) {
+				if (((TilePile) t).validItem(playerIn.getHeldItem(hand))) {
+					boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
+					ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(playerIn.getHeldItem(hand), 1) : playerIn.getHeldItem(hand);
+					ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(toInsert, false);
+					int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();
+					worldIn.playSound(null, pos, ((TilePile) t).placeSound(playerIn.getHeldItem(hand)), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
+					if (!playerIn.capabilities.isCreativeMode)
+						playerIn.getHeldItem(hand).shrink(inserted);
+					return true;
+				} else if (playerIn.getHeldItemMainhand().isEmpty()) {
+					ItemStack looking = ((TilePile) t).lookingStack(playerIn);
+					PlayerMainInvWrapper playerInv = new PlayerMainInvWrapper(playerIn.inventory);
+					for (int i = 0; i < playerInv.getSlots(); i++) {
+						ItemStack s = playerInv.getStackInSlot(i);
+						if (s.isItemEqual(looking)) {
+							ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(playerInv.extractItem(i, 64, false), false);
+							if (!rest.isEmpty()) {
+								playerInv.insertItem(i, rest, false);
+							}
+						}
+					}
+					return true;
+				}
 			}
 			return false;
 		}

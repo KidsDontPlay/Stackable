@@ -65,6 +65,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 			if (tile.getWorld().isAirBlock(neu) && tile.getWorld().setBlockState(neu, tile.getBlockType().getDefaultState(), simulate ? 0 : 3)) {
 				TilePile n = (TilePile) tile.getWorld().getTileEntity(neu);
 				n.masterPos = tile.getPos();
+				n.inv = null;
 				added.add(neu);
 				canInsert = freeItems(stack);
 			} else
