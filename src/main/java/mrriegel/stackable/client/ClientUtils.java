@@ -230,7 +230,8 @@ public class ClientUtils {
 							f1 = f2 = f3 = 0f;
 					} else
 						f1 = f2 = f3 = 1f;
-					double grow = Math.sin((mc.world.getTotalWorldTime() + event.getPartialTicks()) / 3) * .003;
+					double grow = Math.sin((mc.world.getTotalWorldTime() + event.getPartialTicks()) / 3) * .0015;
+					grow += .0015;
 					RenderGlobal.drawSelectionBoundingBox(p.getRight().offset(t.getPos()).grow(grow).offset(-d3, -d4, -d5), f1, f2, f3, 0.8F);
 					event.setCanceled(true);
 				}
@@ -476,18 +477,46 @@ public class ClientUtils {
 			g = col.getGreen() / 255f;
 			b = col.getBlue() / 255f;
 		}
-		boolean flag = aabb.maxX - aabb.minX > aabb.maxZ - aabb.minZ;
-		double a1 = !flag ? aabb.maxX - aabb.minX : aabb.maxZ - aabb.minZ;
-		double a2 = !flag ? aabb.maxX - aabb.minX : aabb.maxZ - aabb.minZ;
-		float diffX = (float) (a1 * .1), diffZ = (float) (a2 * .1);
-		Vector3f va = new Vector3f((float) aabb.minX + (diffX * .2f), (float) aabb.minY, (float) aabb.minZ + (diffZ * .2f)), //
-				vb = new Vector3f((float) aabb.minX + (diffX * .2f), (float) aabb.minY, (float) aabb.maxZ - (diffZ * .2f)), //
-				vc = new Vector3f((float) aabb.minX + diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
-				vd = new Vector3f((float) aabb.minX + diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ), //
-				ve = new Vector3f((float) aabb.maxX - (diffX * .2f), (float) aabb.minY, (float) aabb.minZ + (diffZ * .2f)), //
-				vf = new Vector3f((float) aabb.maxX - (diffX * .2f), (float) aabb.minY, (float) aabb.maxZ - (diffZ * .2f)), //
-				vg = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.maxZ - diffZ), //
-				vh = new Vector3f((float) aabb.maxX - diffX, (float) aabb.maxY, (float) aabb.minZ + diffZ);
+		Vector3f min = new Vector3f((float) aabb.minX, (float) aabb.minY, (float) aabb.minZ);
+		Vector3f max = new Vector3f((float) aabb.maxX, (float) aabb.maxY, (float) aabb.maxZ);
+		Vector3f dimension = Vector3f.sub(max, min, null);
+		float diffX, diffZ, diffXD, diffZD;
+		diffX = diffZ = Math.min(dimension.x, dimension.z) * .1f;
+		diffXD = diffX * .0f;
+		diffZD = diffZ * .0f;
+		boolean scaling = true;
+		float scale = Stackable.scaleI;
+		Vector3f va, vb, vc, vd, ve, vf, vg, vh;
+		if (!scaling) {
+			va = new Vector3f(min.x + diffXD, min.y, min.z + diffZD);
+			vb = new Vector3f(min.x + diffXD, min.y, max.z - diffZD);
+			vc = new Vector3f(min.x + diffX, max.y, max.z - diffZ);
+			vd = new Vector3f(min.x + diffX, max.y, min.z + diffZ);
+			ve = new Vector3f(max.x - diffXD, min.y, min.z + diffZD);
+			vf = new Vector3f(max.x - diffXD, min.y, max.z - diffZD);
+			vg = new Vector3f(max.x - diffX, max.y, max.z - diffZ);
+			vh = new Vector3f(max.x - diffX, max.y, min.z + diffZ);
+		} else {
+			va = (Vector3f) new Vector3f(0 + diffXD, 0, 0 + diffZD).scale(scale);
+			vb = (Vector3f) new Vector3f(0 + diffXD, 0, dimension.z - diffZD).scale(scale);
+			vc = (Vector3f) new Vector3f(0 + diffX, dimension.y, dimension.z - diffZ).scale(scale);
+			vd = (Vector3f) new Vector3f(0 + diffX, dimension.y, 0 + diffZ).scale(scale);
+			ve = (Vector3f) new Vector3f(dimension.x - diffXD, 0, 0 + diffZD).scale(scale);
+			vf = (Vector3f) new Vector3f(dimension.x - diffXD, 0, dimension.z - diffZD).scale(scale);
+			vg = (Vector3f) new Vector3f(dimension.x - diffX, dimension.y, dimension.z - diffZ).scale(scale);
+			vh = (Vector3f) new Vector3f(dimension.x - diffX, dimension.y, 0 + diffZ).scale(scale);
+			Vector3f scaledDimension = (Vector3f) new Vector3f(dimension).scale(.5f * scale);
+			Vector3f add = Vector3f.add(min, (Vector3f) new Vector3f(dimension).scale(.5f), null);
+			Vector3f.sub(add, scaledDimension, add);
+			Vector3f.add(va, add, va);
+			Vector3f.add(vb, add, vb);
+			Vector3f.add(vc, add, vc);
+			Vector3f.add(vd, add, vd);
+			Vector3f.add(ve, add, ve);
+			Vector3f.add(vf, add, vf);
+			Vector3f.add(vg, add, vg);
+			Vector3f.add(vh, add, vh);
+		}
 		//bottom
 		quads.add(createQuad(tas, va, ve, vf, vb, r, g, b, 1));
 		//top

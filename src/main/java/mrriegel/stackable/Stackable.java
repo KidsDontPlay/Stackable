@@ -60,6 +60,7 @@ public class Stackable {
 	//config
 	public static int itemsPerItemI, itemsPerItemA, sizeX, sizeY, sizeZ, overlay, maxPileHeightI, maxPileHeightA, size;
 	public static boolean useBlockTexture, useCompressedTexture;
+	public static float scaleA, scaleI;
 	public static Set<ResourceLocation> allowedIngots;
 
 	public static SimpleNetworkWrapper snw;
@@ -83,6 +84,8 @@ public class Stackable {
 		useBlockTexture = config.getBoolean("useBlockTexture", CATEGORY_CLIENT + ".ingot", true, "Use textures from blocks for ingots (e.g. iron block texture for iron ingot).");
 		useCompressedTexture = config.getBoolean("useCompressedTexture", CATEGORY_CLIENT + ".ingot", true, "Use compressed textures.");
 		overlay = config.getInt("overlay", CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + NEW_LINE + "1 - Overlay visible while sneaking" + NEW_LINE + "2 - Overlay always visible");
+		scaleA = config.getFloat("scale", CATEGORY_CLIENT + ".any", .9f, .1f, 1f, "Scale of the items.");
+		scaleI = config.getFloat("scale", CATEGORY_CLIENT + ".ingot", .95f, .1f, 1f, "Scale of the items.");
 
 		if (config.hasChanged())
 			config.save();

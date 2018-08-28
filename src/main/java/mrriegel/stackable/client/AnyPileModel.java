@@ -16,7 +16,7 @@ public class AnyPileModel extends PileModel {
 		List<AxisAlignedBB> aabbs = tile.itemBoxes();
 		int size = Math.min(stacks.size(), aabbs.size());
 		float f = 1f / Stackable.size;
-		float ff = f * .9f;
+		float ff = f * Stackable.scaleA;
 		float add = f - ff;
 		for (int i = 0; i < size; i++) {
 			ItemStack s = stacks.get(i);
