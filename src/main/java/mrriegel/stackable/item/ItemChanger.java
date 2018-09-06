@@ -2,13 +2,13 @@ package mrriegel.stackable.item;
 
 import java.util.List;
 
+import mrriegel.stackable.Stackable;
+import mrriegel.stackable.tile.TilePile;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
@@ -17,8 +17,6 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
 public class ItemChanger extends Item {
 
@@ -32,9 +30,11 @@ public class ItemChanger extends Item {
 	@Override
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
 		tooltip.add("Right-click to change mode.");
-		tooltip.add(getProperty(stack).toString());
+		Property p = getProperty(stack);
+		tooltip.add(TextFormatting.AQUA + p.name);
+		tooltip.add(TextFormatting.BLUE + p.tooltip);
 		int foo = addAndGet(stack, 0);
-		tooltip.add("Num: " + (foo == -1 ? TextFormatting.ITALIC + "remove" : foo));
+		tooltip.add("Number: " + (foo == -1 ? TextFormatting.ITALIC + "remove" : foo) + " (scroll to change)");
 	}
 
 	public Property getProperty(ItemStack stack) {
@@ -69,32 +69,121 @@ public class ItemChanger extends Item {
 	}
 
 	@Override
-	public ICapabilityProvider initCapabilities(ItemStack stack, NBTTagCompound nbt) {
-		return super.initCapabilities(stack, nbt);
-	}
-
-	@Override
 	public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn) {
 		if (!worldIn.isRemote) {
 			ItemStack stack = playerIn.getHeldItem(handIn);
 			Property p = incProperty(stack);
-			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.YELLOW + p.name() + " new"), true);
-			for (IRecipe r : ForgeRegistries.RECIPES) {
-				if (r.getRecipeOutput().getItem() == Items.STICK) {
-					System.out.println(r.getClass());
-					System.out.println(r.getIngredients());
-					break;
-				}
-			}
-			return new ActionResult<ItemStack>(EnumActionResult.SUCCESS, stack);
+			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.YELLOW + p.name), true);
+			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}
 		return super.onItemRightClick(worldIn, playerIn, handIn);
 	}
 
+	@Override
+	public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
+		return oldStack.getItem() != newStack.getItem();
+	}
+
 	public enum Property {
-		INFO, NOEMPTY, BLACKADD, BLACKREMOVE, WHITEADD, WHITEREMOVE;
+		INFO("Info", "Shows properties"), //
+		NOEMPTY("Persistence", "Toggles persistence."), //
+		BLACKWHITE("Black/White", "Toggles whitelist"), //
+		BLACKADD("Add black", "Adds items to blacklist"), //
+		BLACKREMOVE("Remove black", "Removes items from blacklist"), //
+		WHITEADD("Add white", "Adds items to whitelist"), //
+		WHITEREMOVE("Remove white", "Removes items from whitelist"), //
+		MIN("Minimum", "Sets minimum value for an item."), //
+		MAX("Maximum", "Sets maximum value for an item.");
+
+		String name, tooltip;
+
+		private Property(String name, String tooltip) {
+			this.name = name;
+			this.tooltip = tooltip;
+		}
+
+		public void action(TilePile tile, EntityPlayer player) {
+			ItemStack right = right(player);
+			switch (this) {
+			case BLACKADD:
+				if (right != null) {
+					if (tile.getMaster().blacklist.add(right))
+						player.sendStatusMessage(new TextComponentString("Added " + right.getDisplayName() + " to blacklist."), false);
+					else
+						;
+				}
+				break;
+			case BLACKREMOVE:
+				if (right != null) {
+					if (tile.getMaster().blacklist.remove(right))
+						player.sendStatusMessage(new TextComponentString("Removed " + right.getDisplayName() + " from blacklist."), false);
+					else
+						;
+				}
+				break;
+			case BLACKWHITE:
+				boolean neuB = tile.getMaster().useWhitelist ^= true;
+				player.sendStatusMessage(new TextComponentString("Whitelist: " + neuB), false);
+				break;
+			case INFO:
+				for (String s : tile.getMaster().getProperties())
+					player.sendStatusMessage(new TextComponentString(s), false);
+				break;
+			case MIN:
+				if (right != null) {
+					int num = Stackable.changer.addAndGet(player.getHeldItemMainhand(), 0);
+					if (num != -1) {
+						tile.getMaster().min.put(right, num);
+						player.sendStatusMessage(new TextComponentString("Set minimum for " + right.getDisplayName() + " to " + num + "."), false);
+					} else {
+						tile.getMaster().min.removeInt(right);
+						player.sendStatusMessage(new TextComponentString("Removed minimum for " + right.getDisplayName() + "."), false);
+					}
+				}
+				break;
+			case MAX:
+				if (right != null) {
+					int num = Stackable.changer.addAndGet(player.getHeldItemMainhand(), 0);
+					if (num != -1) {
+						tile.getMaster().max.put(right, num);
+						player.sendStatusMessage(new TextComponentString("Set maximum for " + right.getDisplayName() + " to " + num + "."), false);
+					} else {
+						tile.getMaster().max.removeInt(right);
+						player.sendStatusMessage(new TextComponentString("Removed maximum for " + right.getDisplayName() + "."), false);
+					}
+				}
+				break;
+			case NOEMPTY:
+				boolean neuP = tile.getMaster().persistent ^= true;
+				player.sendStatusMessage(new TextComponentString("Persistence: " + neuP), false);
+				break;
+			case WHITEADD:
+				if (right != null) {
+					if (tile.getMaster().whitelist.add(right))
+						player.sendStatusMessage(new TextComponentString("Added " + right.getDisplayName() + " to whitelist."), false);
+					else
+						;
+				}
+				break;
+			case WHITEREMOVE:
+				if (right != null) {
+					if (tile.getMaster().whitelist.remove(right))
+						player.sendStatusMessage(new TextComponentString("Removed " + right.getDisplayName() + " from whitelist."), false);
+					else
+						;
+				}
+				break;
+			}
+		}
 
 		public static final Property[] VALUES = values().clone();
+
+		private static ItemStack right(EntityPlayer player) {
+			ItemStack right = null;
+			if (player.inventory.currentItem < 8 && !player.inventory.getStackInSlot(player.inventory.currentItem + 1).isEmpty())
+				right = player.inventory.getStackInSlot(player.inventory.currentItem + 1).copy();
+			return right;
+		}
 	}
 
 }

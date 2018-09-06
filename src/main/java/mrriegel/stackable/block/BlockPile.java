@@ -6,7 +6,6 @@ import java.util.stream.IntStream;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.item.ItemChanger;
 import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -26,7 +25,6 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -144,45 +142,27 @@ public class BlockPile extends Block {
 		} else {
 			TileEntity t = worldIn.getTileEntity(pos);
 			if (t instanceof TilePile && hand == EnumHand.MAIN_HAND) {
+				TilePile tile = (TilePile) t;
 				ItemStack stack = playerIn.getHeldItem(hand);
 				if (stack.getItem() == Stackable.changer) {
-					switch (((ItemChanger) stack.getItem()).getProperty(stack)) {
-					case BLACKADD:
-						break;
-					case BLACKREMOVE:
-						break;
-					case INFO:
-						for (String s : ((TilePile) t).getProperties())
-							playerIn.sendStatusMessage(new TextComponentString(s), false);
-						break;
-					case NOEMPTY:
-						boolean neu = (((TilePile) t).persistent ^= true);
-						playerIn.sendStatusMessage(new TextComponentString("Persitence: " + neu), false);
-						break;
-					case WHITEADD:
-						break;
-					case WHITEREMOVE:
-						break;
-					default:
-						break;
-					}
-				} else if (((TilePile) t).validItem(stack)) {
+					Stackable.changer.getProperty(stack).action(tile, playerIn);
+				} else if (tile.validItem(stack)) {
 					boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
 					ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(stack, 1) : stack;
-					ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(toInsert, false);
+					ItemStack rest = tile.getMaster().inv.insertItem(toInsert, false);
 					int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();
-					worldIn.playSound(null, pos, ((TilePile) t).placeSound(stack), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
+					worldIn.playSound(null, pos, tile.placeSound(stack), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 					if (!playerIn.capabilities.isCreativeMode)
 						stack.shrink(inserted);
 					return true;
 				} else if (playerIn.getHeldItemMainhand().isEmpty()) {
-					ItemStack looking = ((TilePile) t).lookingStack(playerIn);
+					ItemStack looking = tile.lookingStack(playerIn);
 					PlayerMainInvWrapper playerInv = new PlayerMainInvWrapper(playerIn.inventory);
 					for (int i = 0; i < playerInv.getSlots(); i++) {
 						ItemStack s = playerInv.getStackInSlot(i);
 						if (s.isItemEqual(looking)) {
-							ItemStack rest = ((TilePile) t).getMaster().inv.insertItem(playerInv.extractItem(i, 64, false), false);
-							worldIn.playSound(null, pos, ((TilePile) t).placeSound(stack), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
+							ItemStack rest = tile.getMaster().inv.insertItem(playerInv.extractItem(i, 64, false), false);
+							worldIn.playSound(null, pos, tile.placeSound(stack), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 							if (!rest.isEmpty()) {
 								playerInv.insertItem(i, rest, false);
 							}

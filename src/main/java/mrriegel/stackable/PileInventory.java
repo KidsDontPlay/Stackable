@@ -34,6 +34,12 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 	public ItemStack extractItem(ItemStack stack, int amount, boolean simulate) {
 		if (stack.isEmpty())
 			return ItemStack.EMPTY;
+		ItemStack ss = stack;
+		int min = tile.min.getInt(stack);
+		if (min > 0) {
+			int total = inventory.object2IntEntrySet().stream().filter(e -> tile.min.strategy().equals(ss, e.getKey())).mapToInt(e -> e.getIntValue()).sum();
+			amount = Math.min(total - min, amount);
+		}
 		int contain = inventory.getInt(stack);
 		int i = Math.min(amount, Math.min(stack.getMaxStackSize(), contain));
 		if (tile.persistent && inventory.size() == 1 && i >= contain) {
@@ -57,6 +63,22 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 	public ItemStack insertItem(ItemStack stack, boolean simulate) {
 		if (!tile.validItem(stack))
 			return stack;
+		if (tile.useWhitelist && !tile.whitelist.contains(stack))
+			return stack;
+		if (!tile.useWhitelist && tile.blacklist.contains(stack))
+			return stack;
+		ItemStack ss = stack;
+		int addReturn = 0;
+		if (tile.max.containsKey(stack)) {
+			int total = inventory.object2IntEntrySet().stream().filter(e -> tile.max.strategy().equals(ss, e.getKey())).mapToInt(e -> e.getIntValue()).sum();
+			int max = tile.max.getInt(stack);
+			int insert = Math.min(max - total, stack.getCount());
+			if (insert <= 0)
+				return stack;
+			addReturn = stack.getCount() - insert;
+			if (insert != stack.getCount())
+				stack = ItemHandlerHelper.copyStackWithSize(stack, insert);
+		}
 		int canInsert = freeItems(stack);
 		boolean noSpace = false;
 		Set<BlockPos> added = new HashSet<>();
@@ -82,7 +104,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		if (simulate)
 			for (BlockPos p : added)
 				tile.getWorld().setBlockState(p, Blocks.AIR.getDefaultState(), 0);
-		return canInsert >= stack.getCount() ? ItemStack.EMPTY : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
+		return canInsert >= stack.getCount() ? ItemHandlerHelper.copyStackWithSize(stack, addReturn) : ItemHandlerHelper.copyStackWithSize(stack, stack.getCount() - canInsert);
 	}
 
 	public void cycle(boolean forward) {

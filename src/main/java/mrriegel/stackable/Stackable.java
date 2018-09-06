@@ -29,6 +29,7 @@ import mrriegel.stackable.tile.TileIngotPile;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.Vec3i;
@@ -48,6 +49,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.common.registry.GameRegistry;
 import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.oredict.ShapedOreRecipe;
 
 @Mod(modid = Stackable.MODID, name = Stackable.NAME, version = Stackable.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
 @EventBusSubscriber
@@ -127,6 +129,9 @@ public class Stackable {
 		} else if (event.getGenericType() == Item.class) {
 			event.getRegistry().register(changer);
 		} else if (event.getGenericType() == IRecipe.class) {
+			ShapedOreRecipe recipe = new ShapedOreRecipe(null, new ItemStack(changer), "  g", " s ", "i  ", 'g', "nuggetGold", 's', "stickWood", 'i', "nuggetIron");
+			recipe.setRegistryName("rrr");
+			event.getRegistry().register(recipe);
 			//			event.getRegistry().register(new ShapedRecipes(null, 3, 3, ingredients, new ItemStack(changer)));
 		}
 	}

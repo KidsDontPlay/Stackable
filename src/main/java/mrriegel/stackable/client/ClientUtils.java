@@ -275,7 +275,6 @@ public class ClientUtils {
 			ScaledResolution sr = event.getResolution();
 			int i = sr.getScaledWidth() / 2;
 			int l = mc.player.inventory.currentItem + 1;
-			time = System.currentTimeMillis() / 50;
 			if (l < 9) {
 				for (int j = 0; j < 8; j++) {
 					int x = i - 90 + l * 20 + 2;
@@ -299,6 +298,7 @@ public class ClientUtils {
 					y += 2;
 					int cc = prop == Property.BLACKADD || prop == Property.BLACKREMOVE ? 0 : 255;
 					Color c = new Color(cc, cc, cc, j * 30);
+					c = Color.getHSBColor((time * 10) / 360f, 1, 1);
 					int color = c.getRGB();
 					GuiUtils.drawGradientRect(700, x, y, x + 4, y + 4, color, color);
 				}

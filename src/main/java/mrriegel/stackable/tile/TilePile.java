@@ -4,14 +4,18 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.google.common.collect.BiMap;
 
 import it.unimi.dsi.fastutil.Hash.Strategy;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import mrriegel.stackable.PileInventory;
 import net.minecraft.block.state.IBlockState;
@@ -30,6 +34,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.items.CapabilityItemHandler;
@@ -101,8 +106,9 @@ public abstract class TilePile extends TileEntity {
 	public long lastTake;
 
 	//properties
-	public boolean persistent;
+	public boolean persistent, useWhitelist;
 	public ObjectOpenCustomHashSet<ItemStack> blacklist = new ObjectOpenCustomHashSet<>(strategyFuzzy), whitelist = new ObjectOpenCustomHashSet<>(strategyFuzzy);
+	public Object2IntOpenCustomHashMap<ItemStack> min = new Object2IntOpenCustomHashMap<>(strategyFuzzy), max = new Object2IntOpenCustomHashMap<>(strategyFuzzy);
 
 	//cache
 	public AxisAlignedBB box;
@@ -176,6 +182,7 @@ public abstract class TilePile extends TileEntity {
 		if (!isMaster && inv != null)
 			inv = null;
 		persistent = compound.getBoolean("persistent");
+		useWhitelist = compound.getBoolean("useWhitelist");
 		if (compound.hasKey("black")) {
 			NBTTagList l = compound.getTagList("black", 10);
 			blacklist.clear();
@@ -185,6 +192,24 @@ public abstract class TilePile extends TileEntity {
 			whitelist.clear();
 			for (NBTBase n : l)
 				whitelist.add(new ItemStack((NBTTagCompound) n));
+			NBTTagList list1 = compound.getTagList("list1min", 10);
+			int[] list2 = compound.getIntArray("list2min");
+			Validate.isTrue(list1.tagCount() == list2.length);
+			min.clear();
+			for (int i = 0; i < list1.tagCount(); i++) {
+				ItemStack s = new ItemStack(list1.getCompoundTagAt(i));
+				if (!s.isEmpty())
+					min.put(s, list2[i]);
+			}
+			list1 = compound.getTagList("list1max", 10);
+			list2 = compound.getIntArray("list2max");
+			Validate.isTrue(list1.tagCount() == list2.length);
+			max.clear();
+			for (int i = 0; i < list1.tagCount(); i++) {
+				ItemStack s = new ItemStack(list1.getCompoundTagAt(i));
+				if (!s.isEmpty())
+					max.put(s, list2[i]);
+			}
 		}
 		change();
 	}
@@ -197,6 +222,7 @@ public abstract class TilePile extends TileEntity {
 		if (inv != null)
 			compound.setTag("inv", inv.serializeNBT());
 		compound.setBoolean("persistent", persistent);
+		compound.setBoolean("useWhitelist", useWhitelist);
 		if (isMaster) {
 			NBTTagList l = new NBTTagList();
 			for (ItemStack s : blacklist)
@@ -206,6 +232,22 @@ public abstract class TilePile extends TileEntity {
 			for (ItemStack s : whitelist)
 				l.appendTag(s.writeToNBT(new NBTTagCompound()));
 			compound.setTag("white", l);
+			NBTTagList list1 = new NBTTagList();
+			IntArrayList list2 = new IntArrayList();
+			for (Object2IntMap.Entry<ItemStack> e : min.object2IntEntrySet()) {
+				list1.appendTag(e.getKey().writeToNBT(new NBTTagCompound()));
+				list2.add(e.getIntValue());
+			}
+			compound.setTag("list1min", list1);
+			compound.setIntArray("list2min", list2.toIntArray());
+			list1 = new NBTTagList();
+			list2 = new IntArrayList();
+			for (Object2IntMap.Entry<ItemStack> e : max.object2IntEntrySet()) {
+				list1.appendTag(e.getKey().writeToNBT(new NBTTagCompound()));
+				list2.add(e.getIntValue());
+			}
+			compound.setTag("list1max", list1);
+			compound.setIntArray("list2max", list2.toIntArray());
 		}
 		return super.writeToNBT(compound);
 	}
@@ -224,14 +266,18 @@ public abstract class TilePile extends TileEntity {
 
 	public List<String> getProperties() {
 		List<String> lis = new ArrayList<>();
+		lis.add(TextFormatting.DARK_PURPLE + StringUtils.repeat('-', 20));
 		lis.add("Persistence: " + persistent);
-		lis.add("Blacklist: ");
-		for (ItemStack s : blacklist)
-			lis.add("  " + s.getDisplayName());
-		lis.add("Whitelist: ");
-		for (ItemStack s : whitelist)
-			lis.add("  " + s.getDisplayName());
-		return lis;
+		lis.add("Whitelist " + (useWhitelist ? "enabled" : "disabled") + "/" + "Blacklist " + (!useWhitelist ? "enabled" : "disabled"));
+		lis.add("Blacklist:");
+		blacklist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+		lis.add("Whitelist:");
+		whitelist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+		lis.add("Minimum:");
+		min.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+		lis.add("Maximum:");
+		max.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+		return lis.stream().distinct().collect(Collectors.toList());
 	}
 
 	public abstract int maxVisualItems();
