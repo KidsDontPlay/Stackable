@@ -12,11 +12,14 @@ import com.google.common.collect.BiMap;
 
 import it.unimi.dsi.fastutil.Hash.Strategy;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import mrriegel.stackable.PileInventory;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
@@ -33,7 +36,7 @@ import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 
 public abstract class TilePile extends TileEntity {
-	public static final Strategy<ItemStack> strategy = new Strategy<ItemStack>() {
+	public static final Strategy<ItemStack> strategyExact = new Strategy<ItemStack>() {
 
 		@Override
 		public int hashCode(ItemStack o) {
@@ -57,10 +60,36 @@ public abstract class TilePile extends TileEntity {
 			return Objects.equals(a.getTagCompound(), b.getTagCompound());
 		}
 	};
+	public static final Strategy<ItemStack> strategyFuzzy = new Strategy<ItemStack>() {
+
+		@Override
+		public int hashCode(ItemStack o) {
+			if (o == null)
+				return 0;
+			int hash = 31;
+			hash ^= o.getItem().getRegistryName().hashCode();
+			hash ^= o.getMetadata();
+			return hash;
+		}
+
+		@Override
+		public boolean equals(ItemStack a, ItemStack b) {
+			if (a == null || b == null)
+				return false;
+			if (a.getItem() != b.getItem())
+				return false;
+			return a.getMetadata() == b.getMetadata();
+		}
+	};
 
 	public static String getOverlayText(ItemStack s, TilePile t) {
 		TilePile m = t.getMaster();
 		return m.inv.inventory.getInt(s) + "x " + s.getDisplayName();
+	}
+
+	public static boolean canPlayerBreak(EntityPlayer player) {
+		ItemStack h = player.getHeldItemMainhand();
+		return h.getItem().getToolClasses(h).contains("pickaxe");
 	}
 
 	public PileInventory inv = new PileInventory(this);
@@ -70,6 +99,10 @@ public abstract class TilePile extends TileEntity {
 	public boolean changedClient = true;
 	public BlockPos masterPos;
 	public long lastTake;
+
+	//properties
+	public boolean persistent;
+	public ObjectOpenCustomHashSet<ItemStack> blacklist = new ObjectOpenCustomHashSet<>(strategyFuzzy), whitelist = new ObjectOpenCustomHashSet<>(strategyFuzzy);
 
 	//cache
 	public AxisAlignedBB box;
@@ -142,6 +175,17 @@ public abstract class TilePile extends TileEntity {
 		super.readFromNBT(compound);
 		if (!isMaster && inv != null)
 			inv = null;
+		persistent = compound.getBoolean("persistent");
+		if (compound.hasKey("black")) {
+			NBTTagList l = compound.getTagList("black", 10);
+			blacklist.clear();
+			for (NBTBase n : l)
+				blacklist.add(new ItemStack((NBTTagCompound) n));
+			l = compound.getTagList("white", 10);
+			whitelist.clear();
+			for (NBTBase n : l)
+				whitelist.add(new ItemStack((NBTTagCompound) n));
+		}
 		change();
 	}
 
@@ -152,6 +196,17 @@ public abstract class TilePile extends TileEntity {
 			compound.setLong("master", masterPos.toLong());
 		if (inv != null)
 			compound.setTag("inv", inv.serializeNBT());
+		compound.setBoolean("persistent", persistent);
+		if (isMaster) {
+			NBTTagList l = new NBTTagList();
+			for (ItemStack s : blacklist)
+				l.appendTag(s.writeToNBT(new NBTTagCompound()));
+			compound.setTag("black", l);
+			l = new NBTTagList();
+			for (ItemStack s : whitelist)
+				l.appendTag(s.writeToNBT(new NBTTagCompound()));
+			compound.setTag("white", l);
+		}
 		return super.writeToNBT(compound);
 	}
 
@@ -165,6 +220,18 @@ public abstract class TilePile extends TileEntity {
 		if (isMaster && capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY)
 			return (T) inv;
 		return super.getCapability(capability, facing);
+	}
+
+	public List<String> getProperties() {
+		List<String> lis = new ArrayList<>();
+		lis.add("Persistence: " + persistent);
+		lis.add("Blacklist: ");
+		for (ItemStack s : blacklist)
+			lis.add("  " + s.getDisplayName());
+		lis.add("Whitelist: ");
+		for (ItemStack s : whitelist)
+			lis.add("  " + s.getDisplayName());
+		return lis;
 	}
 
 	public abstract int maxVisualItems();

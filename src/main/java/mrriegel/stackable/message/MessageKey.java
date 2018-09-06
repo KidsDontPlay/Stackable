@@ -58,6 +58,16 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 					BlockPile.ctrlMap.add(player.getUniqueID());
 				else
 					BlockPile.ctrlMap.remove(player.getUniqueID());
+			} else if (message.key == 3) {
+				int index = message.pos.getZ();
+				int add = message.pos.getX();
+				//				Slot slot=new Slot(player.inventory, index, 0, 0);
+				//				if(slot!=null&&slot.getHasStack()&&slot.getStack().getItem()==Stackable.changer) {
+				//					Stackable.changer.addAndGet(slot.getStack(), add);
+				//				}
+				ItemStack s = player.inventory.getStackInSlot(index);
+				if (!s.isEmpty() && s.getItem() == Stackable.changer)
+					Stackable.changer.addAndGet(s, add);
 			}
 		});
 		return null;

@@ -20,6 +20,7 @@ import mrriegel.stackable.block.BlockIngotPile;
 import mrriegel.stackable.client.ClientUtils;
 import mrriegel.stackable.compat.TOPPlugin;
 import mrriegel.stackable.compat.WailaPlugin;
+import mrriegel.stackable.item.ItemChanger;
 import mrriegel.stackable.message.MessageConfigSync;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.message.MessageTOPTime;
@@ -27,6 +28,8 @@ import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TileIngotPile;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.item.Item;
+import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.Vec3i;
 import net.minecraftforge.common.config.Configuration;
@@ -67,6 +70,8 @@ public class Stackable {
 
 	public static final Block ingots = new BlockIngotPile();
 	public static final Block any = new BlockAnyPile();
+
+	public static final ItemChanger changer = new ItemChanger();
 
 	@Mod.EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
@@ -119,6 +124,10 @@ public class Stackable {
 			GameRegistry.registerTileEntity(TileIngotPile.class, ingots.getRegistryName().toString());
 			event.getRegistry().register(any);
 			GameRegistry.registerTileEntity(TileAnyPile.class, any.getRegistryName().toString());
+		} else if (event.getGenericType() == Item.class) {
+			event.getRegistry().register(changer);
+		} else if (event.getGenericType() == IRecipe.class) {
+			//			event.getRegistry().register(new ShapedRecipes(null, 3, 3, ingredients, new ItemStack(changer)));
 		}
 	}
 

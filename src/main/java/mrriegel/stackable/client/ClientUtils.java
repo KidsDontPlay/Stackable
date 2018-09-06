@@ -15,6 +15,7 @@ import javax.vecmath.Point2f;
 import org.apache.commons.lang3.Validate;
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.util.vector.Matrix4f;
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
@@ -26,13 +27,17 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
+import mrriegel.stackable.item.ItemChanger;
+import mrriegel.stackable.item.ItemChanger.Property;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TilePile;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -47,6 +52,8 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemBlockSpecial;
 import net.minecraft.item.ItemStack;
@@ -57,6 +64,7 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
@@ -64,10 +72,13 @@ import net.minecraft.util.math.Vec3i;
 import net.minecraft.util.text.TextFormatting;
 import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.event.DrawBlockHighlightEvent;
+import net.minecraftforge.client.event.GuiScreenEvent.MouseInputEvent;
 import net.minecraftforge.client.event.ModelBakeEvent;
+import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.client.event.TextureStitchEvent;
+import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.client.model.pipeline.UnpackedBakedQuad;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.fml.client.config.GuiUtils;
@@ -81,8 +92,8 @@ import net.minecraftforge.oredict.OreDictionary;
 @EventBusSubscriber(modid = Stackable.MODID, value = Side.CLIENT)
 public class ClientUtils {
 
-	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TilePile.strategy);
-	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TilePile.strategy);
+	private static final Object2IntMap<ItemStack> cachedColors = new Object2IntOpenCustomHashMap<>(TilePile.strategyExact);
+	private static final Object2ObjectMap<ItemStack, TextureAtlasSprite> cachedSprites = new Object2ObjectOpenCustomHashMap<>(TilePile.strategyFuzzy);
 	private static final ResourceLocation BACKGROUND_TEX = new ResourceLocation("textures/gui/demo_background.png");
 	private static final ResourceLocation SLOT_TEX = new ResourceLocation("textures/gui/container/recipe_background.png");
 	public static final KeyBinding PLACE_KEY = new KeyBinding("key.stackable.place", KeyConflictContext.IN_GAME, Keyboard.KEY_P, Stackable.NAME);
@@ -185,8 +196,7 @@ public class ClientUtils {
 		if (rtr != null && rtr.typeOfHit == Type.BLOCK && rtr.getBlockPos() != null) {
 			TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 			if (t instanceof TilePile) {
-				ItemStack h = mc.player.getHeldItemMainhand();
-				if (h.getItem().getToolClasses(h).contains("pickaxe"))
+				if (TilePile.canPlayerBreak(mc.player))
 					return;
 				GlStateManager.enableBlend();
 				GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
@@ -238,8 +248,7 @@ public class ClientUtils {
 			if (rtr != null && rtr.typeOfHit == Type.BLOCK) {
 				TileEntity t = mc.world.getTileEntity(rtr.getBlockPos());
 				if (t instanceof TilePile) {
-					ItemStack h = mc.player.getHeldItemMainhand();
-					if (h.getItem().getToolClasses(h).contains("pickaxe"))
+					if (TilePile.canPlayerBreak(mc.player))
 						return;
 					ItemStack s = ((TilePile) t).lookingStack(mc.player);
 					if (!s.isEmpty()) {
@@ -259,7 +268,68 @@ public class ClientUtils {
 					}
 				}
 			}
+		} else if (event.getType() == ElementType.HOTBAR && mc.player.getHeldItemMainhand().getItem() == Stackable.changer) {
+			Property prop = ((ItemChanger) mc.player.getHeldItemMainhand().getItem()).getProperty(mc.player.getHeldItemMainhand());
+			if (prop != Property.BLACKADD && prop != Property.WHITEADD && prop != Property.BLACKREMOVE && prop != Property.WHITEREMOVE)
+				return;
+			ScaledResolution sr = event.getResolution();
+			int i = sr.getScaledWidth() / 2;
+			int l = mc.player.inventory.currentItem + 1;
+			time = System.currentTimeMillis() / 50;
+			if (l < 9) {
+				for (int j = 0; j < 8; j++) {
+					int x = i - 90 + l * 20 + 2;
+					int y = sr.getScaledHeight() - 16 - 3;
+					int t = (int) (time + j);
+					int pos = t % 32;
+					if (prop == Property.BLACKREMOVE || prop == Property.WHITEREMOVE)
+						pos = 32 - pos;
+					if (pos >= 0 && pos <= 7) {
+						x += pos % 8;
+					} else if (pos >= 8 && pos <= 15) {
+						x += 8;
+						y += pos % 8;
+					} else if (pos >= 16 && pos <= 23) {
+						x += 8 - pos % 8;
+						y += 8;
+					} else if (pos >= 24 && pos <= 31) {
+						y += 8 - pos % 8;
+					}
+					x += 2;
+					y += 2;
+					int cc = prop == Property.BLACKADD || prop == Property.BLACKREMOVE ? 0 : 255;
+					Color c = new Color(cc, cc, cc, j * 30);
+					int color = c.getRGB();
+					GuiUtils.drawGradientRect(700, x, y, x + 4, y + 4, color, color);
+				}
+			}
 		}
+	}
+
+	@SubscribeEvent
+	public static void mouseWheel(MouseInputEvent.Pre event) {
+		int wheel = Mouse.getEventDWheel();
+		if (event.getGui() instanceof GuiContainer && wheel != 0) {
+			GuiContainer gui = (GuiContainer) event.getGui();
+			Slot slot = gui.getSlotUnderMouse();
+			if (slot != null && slot.getHasStack() && slot.getStack().getItem() == Stackable.changer && slot.inventory instanceof InventoryPlayer) {
+				int index = slot.getSlotIndex();
+				int add = MathHelper.clamp(wheel, -1, 1);
+				if (GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown())
+					add *= 1000;
+				else if (GuiScreen.isShiftKeyDown())
+					add *= 10;
+				else if (GuiScreen.isCtrlKeyDown())
+					add *= 100;
+				Stackable.snw.sendToServer(new MessageKey((byte) 3, new BlockPos(add, 0, index)));
+				event.setCanceled(true);
+			}
+		}
+	}
+
+	@SubscribeEvent
+	public static void texture(ModelRegistryEvent event) {
+		ModelLoader.setCustomModelResourceLocation(Stackable.changer, 0, new ModelResourceLocation(Stackable.changer.getRegistryName(), "inventory"));
 	}
 
 	@SubscribeEvent

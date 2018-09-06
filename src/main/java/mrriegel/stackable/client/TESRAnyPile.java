@@ -61,5 +61,5 @@ public class TESRAnyPile extends TileEntitySpecialRenderer<TileAnyPile> {
 		GlStateManager.popMatrix();
 	}
 
-	private Set<ItemStack> invalids = new ObjectOpenCustomHashSet<>(TilePile.strategy);
+	private Set<ItemStack> invalids = new ObjectOpenCustomHashSet<>(TilePile.strategyFuzzy);
 }

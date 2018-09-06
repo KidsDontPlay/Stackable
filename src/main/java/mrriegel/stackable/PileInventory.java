@@ -23,7 +23,7 @@ import net.minecraftforge.items.ItemHandlerHelper;
 public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHandler {
 
 	private final TilePile tile;
-	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TilePile.strategy);
+	public final Object2IntLinkedOpenCustomHashMap<ItemStack> inventory = new Object2IntLinkedOpenCustomHashMap<>(TilePile.strategyExact);
 	public List<ItemStack> items = null;
 	boolean threadStarted = false;
 
@@ -34,7 +34,11 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 	public ItemStack extractItem(ItemStack stack, int amount, boolean simulate) {
 		if (stack.isEmpty())
 			return ItemStack.EMPTY;
-		int i = Math.min(amount, Math.min(stack.getMaxStackSize(), inventory.getInt(stack)));
+		int contain = inventory.getInt(stack);
+		int i = Math.min(amount, Math.min(stack.getMaxStackSize(), contain));
+		if (tile.persistent && inventory.size() == 1 && i >= contain) {
+			i--;
+		}
 		if (i <= 0)
 			return ItemStack.EMPTY;
 		if (!simulate) {
@@ -119,7 +123,7 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 		int free = 0;
 		int occuItems = 0;
 		for (Object2IntMap.Entry<ItemStack> e : inventory.object2IntEntrySet()) {
-			if (TilePile.strategy.equals(e.getKey(), stack)) {
+			if (TilePile.strategyExact.equals(e.getKey(), stack)) {
 				int value = e.getIntValue();
 				while (value > 0) {
 					if (value >= max) {

@@ -20,7 +20,7 @@ public class TileIngotPile extends TilePile {
 
 	public static int maxIngotAmount = 0;
 	public static BiMap<Integer, Vec3i> coordMap = null;
-	private static Object2BooleanOpenCustomHashMap<ItemStack> validCache = new Object2BooleanOpenCustomHashMap<>(strategy);
+	private static Object2BooleanOpenCustomHashMap<ItemStack> validCache = new Object2BooleanOpenCustomHashMap<>(strategyFuzzy);
 
 	public static boolean validItem1(ItemStack stack) {
 		if (stack.isEmpty())

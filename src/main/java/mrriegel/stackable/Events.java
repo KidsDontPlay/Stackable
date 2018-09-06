@@ -57,9 +57,8 @@ public class Events {
 		BlockPos pos = event.getPos();
 		TileEntity t = event.getWorld().getTileEntity(pos);
 		EntityPlayer player = event.getEntityPlayer();
-		ItemStack h = player.getHeldItemMainhand();
 		long time = System.currentTimeMillis();
-		if (t instanceof TilePile && !h.getItem().getToolClasses(h).contains("pickaxe")) {
+		if (t instanceof TilePile && !TilePile.canPlayerBreak(player)) {
 			event.setCanceled(true);
 			event.setUseBlock(Result.DENY);
 			event.setUseItem(Result.DENY);
@@ -78,8 +77,9 @@ public class Events {
 					ei.setPosition(aabb.minX, aabb.minY, aabb.minZ);
 				} else
 					ei.setPosition(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-				if (t.getWorld().spawnEntity(ei))
+				if (t.getWorld().spawnEntity(ei)) {
 					ei.onCollideWithPlayer(player);
+				}
 			}
 		}
 	}
