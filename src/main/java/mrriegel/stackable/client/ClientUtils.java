@@ -27,7 +27,6 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
-import mrriegel.stackable.item.ItemChanger;
 import mrriegel.stackable.item.ItemChanger.Mode;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
@@ -268,7 +267,7 @@ public class ClientUtils {
 				}
 			}
 		} else if (event.getType() == ElementType.HOTBAR && mc.player.getHeldItemMainhand().getItem() == Stackable.changer) {
-			Mode mode =  Stackable.changer.getMode(mc.player.getHeldItemMainhand());
+			Mode mode = Stackable.changer.getMode(mc.player.getHeldItemMainhand());
 			if (mode != Mode.BLACKADD && mode != Mode.WHITEADD && //
 					mode != Mode.BLACKREMOVE && mode != Mode.WHITEREMOVE && //
 					mode != Mode.MIN && mode != Mode.MAX)
@@ -300,7 +299,7 @@ public class ClientUtils {
 					//					y += 1;
 					//					int cc = prop == Property.BLACKADD || prop == Property.BLACKREMOVE ? 0 : 255;
 					//					Color c = new Color(cc, cc, cc, j * 30);
-					Color c = Color.getHSBColor((mc.world.getTotalWorldTime() * 10) / 360f, 1, 1);
+					Color c = Color.getHSBColor((mc.world.getTotalWorldTime() * 10) / 360f, .5f, .8f);
 					c = new Color(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, (j * 30) / 255f);
 					int color = c.getRGB();
 					GuiUtils.drawGradientRect(700, x, y, x + 4, y + 4, color, color);
