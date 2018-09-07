@@ -30,28 +30,28 @@ public class ItemChanger extends Item {
 	@Override
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
 		tooltip.add("Right-click to change mode.");
-		Property p = getProperty(stack);
-		tooltip.add(TextFormatting.AQUA + p.name + TextFormatting.GRAY + " - " + TextFormatting.BLUE + p.tooltip);
+		Mode m = getMode(stack);
+		tooltip.add(TextFormatting.AQUA + m.name + TextFormatting.GRAY + " - " + TextFormatting.BLUE + m.tooltip);
 		//		tooltip.add(TextFormatting.BLUE + p.tooltip);
 		int foo = addAndGet(stack, 0);
 		tooltip.add("Number: " + (foo == -1 ? TextFormatting.ITALIC + TextFormatting.RED.toString() + "REMOVE" : foo) + TextFormatting.RESET + TextFormatting.GRAY + " (scroll to change)");
 	}
 
-	public Property getProperty(ItemStack stack) {
+	public Mode getMode(ItemStack stack) {
 		NBTTagCompound nbt = null;
 		if ((nbt = stack.getTagCompound()) == null) {
 			nbt = new NBTTagCompound();
-			nbt.setByte("pr0p", (byte) 0);
+			nbt.setByte("m0de", (byte) 0);
 			stack.setTagCompound(nbt);
 		}
-		return Property.VALUES[nbt.getByte("pr0p") % Property.VALUES.length];
+		return Mode.VALUES[nbt.getByte("m0de") % Mode.VALUES.length];
 	}
 
-	public Property incProperty(ItemStack stack) {
-		Property p = getProperty(stack);
-		p = Property.VALUES[(p.ordinal() + 1) % Property.VALUES.length];
-		stack.getTagCompound().setByte("pr0p", (byte) p.ordinal());
-		return p;
+	public Mode incMode(ItemStack stack) {
+		Mode m = getMode(stack);
+		m = Mode.VALUES[(m.ordinal() + 1) % Mode.VALUES.length];
+		stack.getTagCompound().setByte("m0de", (byte) m.ordinal());
+		return m;
 	}
 
 	public int addAndGet(ItemStack stack, int num) {
@@ -72,8 +72,8 @@ public class ItemChanger extends Item {
 	public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn) {
 		if (!worldIn.isRemote) {
 			ItemStack stack = playerIn.getHeldItem(handIn);
-			Property p = incProperty(stack);
-			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.AQUA + "Mode: " + p.name), true);
+			Mode m = incMode(stack);
+			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.AQUA + "Mode: " + m.name), true);
 			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}
 		return super.onItemRightClick(worldIn, playerIn, handIn);
@@ -84,7 +84,7 @@ public class ItemChanger extends Item {
 		return oldStack.getItem() != newStack.getItem();
 	}
 
-	public enum Property {
+	public enum Mode {
 		INFO("Info", "Shows properties"), //
 		NOEMPTY("Persistence", "Toggles persistence."), //
 		BLACKWHITE("Black/White", "Toggles whitelist"), //
@@ -97,7 +97,7 @@ public class ItemChanger extends Item {
 
 		String name, tooltip;
 
-		private Property(String name, String tooltip) {
+		private Mode(String name, String tooltip) {
 			this.name = name;
 			this.tooltip = tooltip;
 		}
@@ -182,7 +182,7 @@ public class ItemChanger extends Item {
 			}
 		}
 
-		public static final Property[] VALUES = values().clone();
+		public static final Mode[] VALUES = values().clone();
 
 		private static ItemStack right(EntityPlayer player) {
 			ItemStack right = null;

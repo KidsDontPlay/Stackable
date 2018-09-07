@@ -28,7 +28,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenCustomHashMap;
 import mrriegel.stackable.Stackable;
 import mrriegel.stackable.item.ItemChanger;
-import mrriegel.stackable.item.ItemChanger.Property;
+import mrriegel.stackable.item.ItemChanger.Mode;
 import mrriegel.stackable.message.MessageKey;
 import mrriegel.stackable.tile.TileAnyPile;
 import mrriegel.stackable.tile.TilePile;
@@ -268,10 +268,10 @@ public class ClientUtils {
 				}
 			}
 		} else if (event.getType() == ElementType.HOTBAR && mc.player.getHeldItemMainhand().getItem() == Stackable.changer) {
-			Property prop = ((ItemChanger) mc.player.getHeldItemMainhand().getItem()).getProperty(mc.player.getHeldItemMainhand());
-			if (prop != Property.BLACKADD && prop != Property.WHITEADD && //
-					prop != Property.BLACKREMOVE && prop != Property.WHITEREMOVE && //
-					prop != Property.MIN && prop != Property.MAX)
+			Mode mode =  Stackable.changer.getMode(mc.player.getHeldItemMainhand());
+			if (mode != Mode.BLACKADD && mode != Mode.WHITEADD && //
+					mode != Mode.BLACKREMOVE && mode != Mode.WHITEREMOVE && //
+					mode != Mode.MIN && mode != Mode.MAX)
 				return;
 			ScaledResolution sr = event.getResolution();
 			int i = sr.getScaledWidth() / 2;
@@ -283,7 +283,7 @@ public class ClientUtils {
 					int y = sr.getScaledHeight() - 16 - 3;
 					long t = (time + j);
 					long pos = t % 48;
-					if (prop == Property.BLACKREMOVE || prop == Property.WHITEREMOVE)
+					if (mode == Mode.BLACKREMOVE || mode == Mode.WHITEREMOVE)
 						pos = 48 - pos;
 					if (pos >= 0 && pos <= 11) {
 						x += pos % 12;

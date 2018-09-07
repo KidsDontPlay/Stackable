@@ -145,7 +145,7 @@ public class BlockPile extends Block {
 				TilePile tile = (TilePile) t;
 				ItemStack stack = playerIn.getHeldItem(hand);
 				if (stack.getItem() == Stackable.changer) {
-					Stackable.changer.getProperty(stack).action(tile, playerIn);
+					Stackable.changer.getMode(stack).action(tile, playerIn);
 				} else if (tile.validItem(stack)) {
 					boolean ctrl = ctrlSet.contains(playerIn.getUniqueID());
 					ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(stack, 1) : stack;
