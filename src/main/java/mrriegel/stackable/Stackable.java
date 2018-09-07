@@ -132,7 +132,6 @@ public class Stackable {
 			ShapedOreRecipe recipe = new ShapedOreRecipe(null, new ItemStack(changer), "  g", " s ", "i  ", 'g', "nuggetGold", 's', "stickWood", 'i', "nuggetIron");
 			recipe.setRegistryName("rrr");
 			event.getRegistry().register(recipe);
-			//			event.getRegistry().register(new ShapedRecipes(null, 3, 3, ingredients, new ItemStack(changer)));
 		}
 	}
 

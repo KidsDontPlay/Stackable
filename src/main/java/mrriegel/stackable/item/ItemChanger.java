@@ -31,10 +31,10 @@ public class ItemChanger extends Item {
 	public void addInformation(ItemStack stack, World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
 		tooltip.add("Right-click to change mode.");
 		Property p = getProperty(stack);
-		tooltip.add(TextFormatting.AQUA + p.name);
-		tooltip.add(TextFormatting.BLUE + p.tooltip);
+		tooltip.add(TextFormatting.AQUA + p.name + TextFormatting.GRAY + " - " + TextFormatting.BLUE + p.tooltip);
+		//		tooltip.add(TextFormatting.BLUE + p.tooltip);
 		int foo = addAndGet(stack, 0);
-		tooltip.add("Number: " + (foo == -1 ? TextFormatting.ITALIC + "remove" : foo) + " (scroll to change)");
+		tooltip.add("Number: " + (foo == -1 ? TextFormatting.ITALIC + TextFormatting.RED.toString() + "REMOVE" : foo) + TextFormatting.RESET + TextFormatting.GRAY + " (scroll to change)");
 	}
 
 	public Property getProperty(ItemStack stack) {
@@ -73,7 +73,7 @@ public class ItemChanger extends Item {
 		if (!worldIn.isRemote) {
 			ItemStack stack = playerIn.getHeldItem(handIn);
 			Property p = incProperty(stack);
-			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.YELLOW + p.name), true);
+			playerIn.sendStatusMessage(new TextComponentString(TextFormatting.AQUA + "Mode: " + p.name), true);
 			return new ActionResult<>(EnumActionResult.SUCCESS, stack);
 		}
 		return super.onItemRightClick(worldIn, playerIn, handIn);
@@ -88,12 +88,12 @@ public class ItemChanger extends Item {
 		INFO("Info", "Shows properties"), //
 		NOEMPTY("Persistence", "Toggles persistence."), //
 		BLACKWHITE("Black/White", "Toggles whitelist"), //
-		BLACKADD("Add black", "Adds items to blacklist"), //
-		BLACKREMOVE("Remove black", "Removes items from blacklist"), //
-		WHITEADD("Add white", "Adds items to whitelist"), //
-		WHITEREMOVE("Remove white", "Removes items from whitelist"), //
-		MIN("Minimum", "Sets minimum value for an item."), //
-		MAX("Maximum", "Sets maximum value for an item.");
+		BLACKADD("Black+", "Adds items to blacklist"), //
+		BLACKREMOVE("Black-", "Removes items from blacklist"), //
+		WHITEADD("White+", "Adds items to whitelist"), //
+		WHITEREMOVE("White-", "Removes items from whitelist"), //
+		MIN("Minimum", "Sets minimum amount for an item."), //
+		MAX("Maximum", "Sets maximum amount for an item.");
 
 		String name, tooltip;
 
@@ -136,8 +136,11 @@ public class ItemChanger extends Item {
 						tile.getMaster().min.put(right, num);
 						player.sendStatusMessage(new TextComponentString("Set minimum for " + right.getDisplayName() + " to " + num + "."), false);
 					} else {
-						tile.getMaster().min.removeInt(right);
-						player.sendStatusMessage(new TextComponentString("Removed minimum for " + right.getDisplayName() + "."), false);
+						boolean contain = tile.getMaster().min.containsKey(right);
+						if (contain) {
+							tile.getMaster().min.removeInt(right);
+							player.sendStatusMessage(new TextComponentString("Removed minimum for " + right.getDisplayName() + "."), false);
+						}
 					}
 				}
 				break;
@@ -148,8 +151,11 @@ public class ItemChanger extends Item {
 						tile.getMaster().max.put(right, num);
 						player.sendStatusMessage(new TextComponentString("Set maximum for " + right.getDisplayName() + " to " + num + "."), false);
 					} else {
-						tile.getMaster().max.removeInt(right);
-						player.sendStatusMessage(new TextComponentString("Removed maximum for " + right.getDisplayName() + "."), false);
+						boolean contain = tile.getMaster().max.containsKey(right);
+						if (contain) {
+							tile.getMaster().max.removeInt(right);
+							player.sendStatusMessage(new TextComponentString("Removed maximum for " + right.getDisplayName() + "."), false);
+						}
 					}
 				}
 				break;
@@ -180,8 +186,9 @@ public class ItemChanger extends Item {
 
 		private static ItemStack right(EntityPlayer player) {
 			ItemStack right = null;
-			if (player.inventory.currentItem < 8 && !player.inventory.getStackInSlot(player.inventory.currentItem + 1).isEmpty())
-				right = player.inventory.getStackInSlot(player.inventory.currentItem + 1).copy();
+			ItemStack tmp = player.inventory.getStackInSlot(player.inventory.currentItem + 1);
+			if (player.inventory.currentItem < 8 && !tmp.isEmpty())
+				right = tmp.copy();
 			return right;
 		}
 	}

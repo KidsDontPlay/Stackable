@@ -55,9 +55,9 @@ public class MessageKey implements IMessage, IMessageHandler<MessageKey, IMessag
 			} else if (message.key == 2) {
 				boolean pressed = message.pos.getX() == 1;
 				if (pressed)
-					BlockPile.ctrlMap.add(player.getUniqueID());
+					BlockPile.ctrlSet.add(player.getUniqueID());
 				else
-					BlockPile.ctrlMap.remove(player.getUniqueID());
+					BlockPile.ctrlSet.remove(player.getUniqueID());
 			} else if (message.key == 3) {
 				int index = message.pos.getZ();
 				int add = message.pos.getX();

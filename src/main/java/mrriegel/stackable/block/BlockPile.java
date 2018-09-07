@@ -57,7 +57,7 @@ public class BlockPile extends Block {
 			return value.toString();
 		}
 	};
-	public static final ObjectOpenHashSet<UUID> ctrlMap = new ObjectOpenHashSet<>();
+	public static final ObjectOpenHashSet<UUID> ctrlSet = new ObjectOpenHashSet<>();
 
 	public BlockPile(String name, Material materialIn) {
 		super(materialIn);
@@ -147,7 +147,7 @@ public class BlockPile extends Block {
 				if (stack.getItem() == Stackable.changer) {
 					Stackable.changer.getProperty(stack).action(tile, playerIn);
 				} else if (tile.validItem(stack)) {
-					boolean ctrl = ctrlMap.contains(playerIn.getUniqueID());
+					boolean ctrl = ctrlSet.contains(playerIn.getUniqueID());
 					ItemStack toInsert = ctrl ? ItemHandlerHelper.copyStackWithSize(stack, 1) : stack;
 					ItemStack rest = tile.getMaster().inv.insertItem(toInsert, false);
 					int inserted = rest.isEmpty() ? toInsert.getCount() : toInsert.getCount() - rest.getCount();

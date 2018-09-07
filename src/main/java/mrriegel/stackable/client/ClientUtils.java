@@ -64,7 +64,6 @@ import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.util.math.RayTraceResult.Type;
 import net.minecraft.util.math.Vec3d;
@@ -270,35 +269,39 @@ public class ClientUtils {
 			}
 		} else if (event.getType() == ElementType.HOTBAR && mc.player.getHeldItemMainhand().getItem() == Stackable.changer) {
 			Property prop = ((ItemChanger) mc.player.getHeldItemMainhand().getItem()).getProperty(mc.player.getHeldItemMainhand());
-			if (prop != Property.BLACKADD && prop != Property.WHITEADD && prop != Property.BLACKREMOVE && prop != Property.WHITEREMOVE)
+			if (prop != Property.BLACKADD && prop != Property.WHITEADD && //
+					prop != Property.BLACKREMOVE && prop != Property.WHITEREMOVE && //
+					prop != Property.MIN && prop != Property.MAX)
 				return;
 			ScaledResolution sr = event.getResolution();
 			int i = sr.getScaledWidth() / 2;
 			int l = mc.player.inventory.currentItem + 1;
+			time = System.currentTimeMillis() / 20;
 			if (l < 9) {
 				for (int j = 0; j < 8; j++) {
 					int x = i - 90 + l * 20 + 2;
 					int y = sr.getScaledHeight() - 16 - 3;
-					int t = (int) (time + j);
-					int pos = t % 32;
+					long t = (time + j);
+					long pos = t % 48;
 					if (prop == Property.BLACKREMOVE || prop == Property.WHITEREMOVE)
-						pos = 32 - pos;
-					if (pos >= 0 && pos <= 7) {
-						x += pos % 8;
-					} else if (pos >= 8 && pos <= 15) {
-						x += 8;
-						y += pos % 8;
-					} else if (pos >= 16 && pos <= 23) {
-						x += 8 - pos % 8;
-						y += 8;
-					} else if (pos >= 24 && pos <= 31) {
-						y += 8 - pos % 8;
+						pos = 48 - pos;
+					if (pos >= 0 && pos <= 11) {
+						x += pos % 12;
+					} else if (pos >= 12 && pos <= 23) {
+						x += 12;
+						y += pos % 12;
+					} else if (pos >= 24 && pos <= 35) {
+						x += 12 - pos % 12;
+						y += 12;
+					} else if (pos >= 36 && pos <= 47) {
+						y += 12 - pos % 12;
 					}
-					x += 2;
-					y += 2;
-					int cc = prop == Property.BLACKADD || prop == Property.BLACKREMOVE ? 0 : 255;
-					Color c = new Color(cc, cc, cc, j * 30);
-					c = Color.getHSBColor((time * 10) / 360f, 1, 1);
+					//					x += 1;
+					//					y += 1;
+					//					int cc = prop == Property.BLACKADD || prop == Property.BLACKREMOVE ? 0 : 255;
+					//					Color c = new Color(cc, cc, cc, j * 30);
+					Color c = Color.getHSBColor((mc.world.getTotalWorldTime() * 10) / 360f, 1, 1);
+					c = new Color(c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, (j * 30) / 255f);
 					int color = c.getRGB();
 					GuiUtils.drawGradientRect(700, x, y, x + 4, y + 4, color, color);
 				}
@@ -306,22 +309,28 @@ public class ClientUtils {
 		}
 	}
 
+	private static long lastMessage = 0;
+
 	@SubscribeEvent
 	public static void mouseWheel(MouseInputEvent.Pre event) {
 		int wheel = Mouse.getEventDWheel();
+		long time = System.currentTimeMillis();
 		if (event.getGui() instanceof GuiContainer && wheel != 0) {
 			GuiContainer gui = (GuiContainer) event.getGui();
 			Slot slot = gui.getSlotUnderMouse();
 			if (slot != null && slot.getHasStack() && slot.getStack().getItem() == Stackable.changer && slot.inventory instanceof InventoryPlayer) {
-				int index = slot.getSlotIndex();
-				int add = MathHelper.clamp(wheel, -1, 1);
-				if (GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown())
-					add *= 1000;
-				else if (GuiScreen.isShiftKeyDown())
-					add *= 10;
-				else if (GuiScreen.isCtrlKeyDown())
-					add *= 100;
-				Stackable.snw.sendToServer(new MessageKey((byte) 3, new BlockPos(add, 0, index)));
+				if (time > lastMessage + 65) {
+					lastMessage = time;
+					int index = slot.getSlotIndex();
+					int add = wheel > 0 ? 1 : -1;
+					if (GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown())
+						add *= 1000;
+					else if (GuiScreen.isShiftKeyDown())
+						add *= 10;
+					else if (GuiScreen.isCtrlKeyDown())
+						add *= 100;
+					Stackable.snw.sendToServer(new MessageKey((byte) 3, new BlockPos(add, 0, index)));
+				}
 				event.setCanceled(true);
 			}
 		}
