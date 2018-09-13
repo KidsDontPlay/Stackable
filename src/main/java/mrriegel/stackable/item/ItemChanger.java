@@ -119,7 +119,7 @@ public class ItemChanger extends Item {
 								for (ItemStack s : pi.getItems()) {
 									ItemStack rest = tile.inv.insertItem(s, false);
 									if (!rest.isEmpty()) {
-										world.spawnEntity(new EntityItem(world, player.posX, player.posY, player.posZ));
+										world.spawnEntity(new EntityItem(world, player.posX, player.posY, player.posZ, rest));
 									}
 								}
 								for (TilePile tp : tiles)
