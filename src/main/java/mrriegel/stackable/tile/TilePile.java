@@ -269,14 +269,22 @@ public abstract class TilePile extends TileEntity {
 		lis.add(TextFormatting.DARK_PURPLE + StringUtils.repeat('-', 20));
 		lis.add("Persistence: " + persistent);
 		lis.add("Whitelist " + (useWhitelist ? "enabled" : "disabled") + "/" + "Blacklist " + (!useWhitelist ? "enabled" : "disabled"));
-		lis.add("Blacklist:");
-		blacklist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
-		lis.add("Whitelist:");
-		whitelist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
-		lis.add("Minimum:");
-		min.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
-		lis.add("Maximum:");
-		max.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+		if (!blacklist.isEmpty()) {
+			lis.add("Blacklist:");
+			blacklist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+		}
+		if (!whitelist.isEmpty()) {
+			lis.add("Whitelist:");
+			whitelist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+		}
+		if (!min.isEmpty()) {
+			lis.add("Minimum:");
+			min.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+		}
+		if (!max.isEmpty()) {
+			lis.add("Maximum:");
+			max.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+		}
 		return lis.stream().distinct().collect(Collectors.toList());
 	}
 

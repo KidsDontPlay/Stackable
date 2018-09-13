@@ -68,7 +68,7 @@ public abstract class PileModel implements IBakedModel {
 
 	@Override
 	public boolean isAmbientOcclusion() {
-		return true;
+		return false;
 	}
 
 	@Override

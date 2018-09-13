@@ -554,24 +554,24 @@ public class ClientUtils {
 	}
 
 	static BakedQuad scale(BakedQuad q, float x, float y, float z) {
-		Vector3f[] vecs = ClientUtils.getCoords(q);
+		Vector3f[] vecs = getCoords(q);
 		for (int i = 0; i < vecs.length; i++)
 			vecs[i] = scale(vecs[i], x, y, z);
-		return ClientUtils.setCoords(q, vecs);
+		return setCoords(q, vecs);
 	}
 
 	static BakedQuad rotate(BakedQuad q, float degree, float x, float y, float z) {
-		Vector3f[] vecs = ClientUtils.getCoords(q);
+		Vector3f[] vecs = getCoords(q);
 		for (int i = 0; i < vecs.length; i++)
 			vecs[i] = rotate(vecs[i], degree, x, y, z);
-		return ClientUtils.setCoords(q, vecs);
+		return setCoords(q, vecs);
 	}
 
 	static BakedQuad translate(BakedQuad q, float x, float y, float z) {
-		Vector3f[] vecs = ClientUtils.getCoords(q);
+		Vector3f[] vecs = getCoords(q);
 		for (int i = 0; i < vecs.length; i++)
 			vecs[i] = translate(vecs[i], x, y, z);
-		return ClientUtils.setCoords(q, vecs);
+		return setCoords(q, vecs);
 	}
 
 	static Vector3f[] getCoords(BakedQuad quad) {

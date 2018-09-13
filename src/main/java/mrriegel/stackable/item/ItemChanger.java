@@ -182,7 +182,7 @@ public class ItemChanger extends Item {
 			}
 		}
 
-		public static final Mode[] VALUES = values().clone();
+		public static final Mode[] VALUES = values();
 
 		private static ItemStack right(EntityPlayer player) {
 			ItemStack right = null;
