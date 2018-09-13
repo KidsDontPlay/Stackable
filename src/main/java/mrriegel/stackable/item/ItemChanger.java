@@ -2,17 +2,23 @@ package mrriegel.stackable.item;
 
 import java.util.List;
 
+import mrriegel.stackable.PileInventory;
 import mrriegel.stackable.Stackable;
 import mrriegel.stackable.tile.TilePile;
+import net.minecraft.block.Block;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextFormatting;
@@ -80,6 +86,68 @@ public class ItemChanger extends Item {
 	}
 
 	@Override
+	public EnumActionResult onItemUseFirst(EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, EnumHand hand) {
+		if (world.isRemote)
+			return EnumActionResult.SUCCESS;
+		ItemStack stack = player.getHeldItem(hand);
+		if (Stackable.changer.getMode(stack) == Mode.MOVE && stack.getTagCompound().hasKey("p0s")) {
+			BlockPos originPos = BlockPos.fromLong(stack.getTagCompound().getLong("p0s"));
+			if (world.provider.getDimension() == stack.getTagCompound().getInteger("d1m")) {
+				TileEntity t = world.getTileEntity(originPos);
+				if (t instanceof TilePile) {
+					TilePile tile = (TilePile) t;
+					Block block = tile.getBlockType();
+					if (tile.isMaster) {
+						List<TilePile> tiles = tile.getAllPileBlocks();
+						BlockPos neu = pos.offset(side);
+						boolean noSpace = false;
+						for (int i = 0; i < tiles.size(); i++) {
+							if (!world.isAirBlock(neu.up(i))) {
+								noSpace = true;
+								break;
+							}
+						}
+						if (!noSpace) {
+							if (world.setBlockState(neu, block.getDefaultState(), 2)) {
+								stack.getTagCompound().removeTag("p0s");
+								stack.getTagCompound().removeTag("d1m");
+								PileInventory pi = tile.inv;
+								pi.items = null;
+								tile = (TilePile) world.getTileEntity(neu);
+								tile.isMaster = true;
+								world.notifyNeighborsOfStateChange(neu, block, true);
+								for (ItemStack s : pi.getItems()) {
+									ItemStack rest = tile.inv.insertItem(s, false);
+									if (!rest.isEmpty()) {
+										world.spawnEntity(new EntityItem(world, player.posX, player.posY, player.posZ));
+									}
+								}
+								for (TilePile tp : tiles)
+									world.removeTileEntity(tp.getPos());
+								for (TilePile tp : tiles)
+									world.setBlockToAir(tp.getPos());
+								return EnumActionResult.SUCCESS;
+
+							} else {
+								player.sendStatusMessage(new TextComponentString("Could not place pile here."), false);
+							}
+						} else {
+							player.sendStatusMessage(new TextComponentString("Not enough space."), false);
+						}
+					} else {
+						player.sendStatusMessage(new TextComponentString("Something went wrong."), false);
+					}
+				} else {
+					player.sendStatusMessage(new TextComponentString("Pile is gone."), false);
+				}
+			} else {
+				player.sendStatusMessage(new TextComponentString("Only within same dimension."), false);
+			}
+		}
+		return super.onItemUseFirst(player, world, pos, side, hitX, hitY, hitZ, hand);
+	}
+
+	@Override
 	public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
 		return oldStack.getItem() != newStack.getItem();
 	}
@@ -93,7 +161,8 @@ public class ItemChanger extends Item {
 		WHITEADD("White+", "Adds items to whitelist"), //
 		WHITEREMOVE("White-", "Removes items from whitelist"), //
 		MIN("Minimum", "Sets minimum amount for an item."), //
-		MAX("Maximum", "Sets maximum amount for an item.");
+		MAX("Maximum", "Sets maximum amount for an item."), //
+		MOVE("Move", "Moves pile to another location.");
 
 		String name, tooltip;
 
@@ -178,6 +247,20 @@ public class ItemChanger extends Item {
 					else
 						;
 				}
+				break;
+			case MOVE:
+				ItemStack stack = player.getHeldItemMainhand();
+				NBTTagCompound nbt;
+				if (stack.hasTagCompound()) {
+					nbt = stack.getTagCompound();
+				} else {
+					nbt = new NBTTagCompound();
+					stack.setTagCompound(nbt);
+				}
+				nbt.setLong("p0s", tile.getMaster().getPos().toLong());
+				nbt.setInteger("d1m", tile.getMaster().getWorld().provider.getDimension());
+				player.sendStatusMessage(new TextComponentString("Prepared to move the pile."), false);
+				player.sendStatusMessage(new TextComponentString("Click on a block to move it there."), false);
 				break;
 			}
 		}
