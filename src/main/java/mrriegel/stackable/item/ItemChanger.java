@@ -92,8 +92,10 @@ public class ItemChanger extends Item {
 		ItemStack stack = player.getHeldItem(hand);
 		if (Stackable.changer.getMode(stack) == Mode.MOVE && stack.getTagCompound().hasKey("p0s")) {
 			BlockPos originPos = BlockPos.fromLong(stack.getTagCompound().getLong("p0s"));
-			if (world.provider.getDimension() == stack.getTagCompound().getInteger("d1m")) {
-				TileEntity t = world.getTileEntity(originPos);
+			int dim = stack.getTagCompound().getInteger("d1m");
+			World oldWorld = dim == world.provider.getDimension() ? world : world.getMinecraftServer().getWorld(dim);
+			if (oldWorld != null) {
+				TileEntity t = oldWorld.getTileEntity(originPos);
 				if (t instanceof TilePile) {
 					TilePile tile = (TilePile) t;
 					Block block = tile.getBlockType();
@@ -123,9 +125,9 @@ public class ItemChanger extends Item {
 									}
 								}
 								for (TilePile tp : tiles)
-									world.removeTileEntity(tp.getPos());
+									oldWorld.removeTileEntity(tp.getPos());
 								for (TilePile tp : tiles)
-									world.setBlockToAir(tp.getPos());
+									oldWorld.setBlockToAir(tp.getPos());
 								return EnumActionResult.SUCCESS;
 
 							} else {
@@ -141,7 +143,7 @@ public class ItemChanger extends Item {
 					player.sendStatusMessage(new TextComponentString("Pile is gone."), false);
 				}
 			} else {
-				player.sendStatusMessage(new TextComponentString("Only within same dimension."), false);
+				player.sendStatusMessage(new TextComponentString("Could not load other dimension."), false);
 			}
 		}
 		return super.onItemUseFirst(player, world, pos, side, hitX, hitY, hitZ, hand);
@@ -177,22 +179,22 @@ public class ItemChanger extends Item {
 			case BLACKADD:
 				if (right != null) {
 					if (tile.getMaster().blacklist.add(right))
-						player.sendStatusMessage(new TextComponentString("Added " + right.getDisplayName() + " to blacklist."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Added " + right.getDisplayName() + " to blacklist."), false);
 					else
-						;
+						player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "Blacklist already contains " + right.getDisplayName() + "."), false);
 				}
 				break;
 			case BLACKREMOVE:
 				if (right != null) {
 					if (tile.getMaster().blacklist.remove(right))
-						player.sendStatusMessage(new TextComponentString("Removed " + right.getDisplayName() + " from blacklist."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Removed " + right.getDisplayName() + " from blacklist."), false);
 					else
-						;
+						player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "Blacklist doesn't contain " + right.getDisplayName() + "."), false);
 				}
 				break;
 			case BLACKWHITE:
 				boolean neuB = tile.getMaster().useWhitelist ^= true;
-				player.sendStatusMessage(new TextComponentString("Whitelist: " + neuB), false);
+				player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Whitelist: " + neuB), false);
 				break;
 			case INFO:
 				for (String s : tile.getMaster().getProperties())
@@ -203,13 +205,14 @@ public class ItemChanger extends Item {
 					int num = Stackable.changer.addAndGet(player.getHeldItemMainhand(), 0);
 					if (num != -1) {
 						tile.getMaster().min.put(right, num);
-						player.sendStatusMessage(new TextComponentString("Set minimum for " + right.getDisplayName() + " to " + num + "."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Set minimum for " + right.getDisplayName() + " to " + num + "."), false);
 					} else {
 						boolean contain = tile.getMaster().min.containsKey(right);
 						if (contain) {
 							tile.getMaster().min.removeInt(right);
-							player.sendStatusMessage(new TextComponentString("Removed minimum for " + right.getDisplayName() + "."), false);
-						}
+							player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Removed minimum for " + right.getDisplayName() + "."), false);
+						} else
+							player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "No minimum set for " + right.getDisplayName() + "."), false);
 					}
 				}
 				break;
@@ -218,45 +221,41 @@ public class ItemChanger extends Item {
 					int num = Stackable.changer.addAndGet(player.getHeldItemMainhand(), 0);
 					if (num != -1) {
 						tile.getMaster().max.put(right, num);
-						player.sendStatusMessage(new TextComponentString("Set maximum for " + right.getDisplayName() + " to " + num + "."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Set maximum for " + right.getDisplayName() + " to " + num + "."), false);
 					} else {
 						boolean contain = tile.getMaster().max.containsKey(right);
 						if (contain) {
 							tile.getMaster().max.removeInt(right);
-							player.sendStatusMessage(new TextComponentString("Removed maximum for " + right.getDisplayName() + "."), false);
-						}
+							player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Removed maximum for " + right.getDisplayName() + "."), false);
+						} else
+							player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "No maximum set for " + right.getDisplayName() + "."), false);
 					}
 				}
 				break;
 			case NOEMPTY:
 				boolean neuP = tile.getMaster().persistent ^= true;
-				player.sendStatusMessage(new TextComponentString("Persistence: " + neuP), false);
+				player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Persistence: " + neuP), false);
 				break;
 			case WHITEADD:
 				if (right != null) {
 					if (tile.getMaster().whitelist.add(right))
-						player.sendStatusMessage(new TextComponentString("Added " + right.getDisplayName() + " to whitelist."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Added " + right.getDisplayName() + " to whitelist."), false);
 					else
-						;
+						player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "Whitelist already contains " + right.getDisplayName() + "."), false);
 				}
 				break;
 			case WHITEREMOVE:
 				if (right != null) {
 					if (tile.getMaster().whitelist.remove(right))
-						player.sendStatusMessage(new TextComponentString("Removed " + right.getDisplayName() + " from whitelist."), false);
+						player.sendStatusMessage(new TextComponentString(TextFormatting.GREEN + "Removed " + right.getDisplayName() + " from whitelist."), false);
 					else
-						;
+						player.sendStatusMessage(new TextComponentString(TextFormatting.RED + "Whitelist doesn't contain " + right.getDisplayName() + "."), false);
 				}
 				break;
 			case MOVE:
 				ItemStack stack = player.getHeldItemMainhand();
-				NBTTagCompound nbt;
-				if (stack.hasTagCompound()) {
-					nbt = stack.getTagCompound();
-				} else {
-					nbt = new NBTTagCompound();
-					stack.setTagCompound(nbt);
-				}
+				Stackable.changer.getMode(stack);
+				NBTTagCompound nbt = stack.getTagCompound();
 				nbt.setLong("p0s", tile.getMaster().getPos().toLong());
 				nbt.setInteger("d1m", tile.getMaster().getWorld().provider.getDimension());
 				player.sendStatusMessage(new TextComponentString("Prepared to move the pile."), false);

@@ -198,8 +198,8 @@ public class BlockPile extends Block {
 				}
 				worldIn.removeTileEntity(pos);
 			}
-		}
-		worldIn.removeTileEntity(pos);
+		} else if (t != null)
+			worldIn.removeTileEntity(pos);
 	}
 
 	@Override

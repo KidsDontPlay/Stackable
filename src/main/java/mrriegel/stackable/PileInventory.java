@@ -108,6 +108,8 @@ public class PileInventory implements INBTSerializable<NBTTagCompound>, IItemHan
 	}
 
 	public void cycle(boolean forward) {
+		if (inventory.size() < 2)
+			return;
 		if (!forward) {
 			ItemStack s = inventory.firstKey();
 			int val = inventory.removeInt(s);
