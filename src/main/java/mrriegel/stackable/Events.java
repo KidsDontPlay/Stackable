@@ -1,5 +1,6 @@
 package mrriegel.stackable;
 
+import java.util.ConcurrentModificationException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,7 +46,7 @@ public class Events {
 						}
 					}
 				});
-			} catch (Exception e) {
+			} catch (ConcurrentModificationException e) {
 			}
 		}
 	}
