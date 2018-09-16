@@ -46,7 +46,6 @@ public class Events {
 					}
 				});
 			} catch (Exception e) {
-				throw new RuntimeException(e);
 			}
 		}
 	}
