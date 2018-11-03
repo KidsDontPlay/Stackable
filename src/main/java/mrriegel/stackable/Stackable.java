@@ -58,7 +58,7 @@ public class Stackable {
 	@Instance(Stackable.MODID)
 	public static Stackable INSTANCE;
 
-	public static final String VERSION = "1.3.2";
+	public static final String VERSION = "1.3.3";
 	public static final String NAME = "Stackable";
 	public static final String MODID = "stackable";
 
@@ -67,6 +67,7 @@ public class Stackable {
 	public static boolean useBlockTexture, useCompressedTexture;
 	public static float scaleA, scaleI;
 	public static Set<ResourceLocation> allowedIngots;
+	public static List<String> preferredTextures;
 
 	public static SimpleNetworkWrapper snw;
 
@@ -93,6 +94,7 @@ public class Stackable {
 		overlay = config.getInt("overlay", CATEGORY_CLIENT, 1, 0, 2, "0 - Overlay not visible" + NEW_LINE + "1 - Overlay visible while sneaking" + NEW_LINE + "2 - Overlay always visible");
 		scaleA = config.getFloat("scale", CATEGORY_CLIENT + ".any", .9f, .1f, 1f, "Scale of the items.");
 		scaleI = config.getFloat("scale", CATEGORY_CLIENT + ".ingot", .95f, .1f, 1f, "Scale of the items.");
+		preferredTextures = Arrays.asList(config.getStringList("preferredTextures", CATEGORY_CLIENT + ".ingot", new String[] { "embers", "thermalfoundation", "immersiveengineering" }, "Textures from mods in this list will be preferred for ingot piles (Decreasing priority)."));
 
 		if (config.hasChanged())
 			config.save();

@@ -147,19 +147,26 @@ public class ClientUtils {
 			return cachedSprites.get(stack);
 		TextureAtlasSprite tas = null;
 		if (!stack.isEmpty()) {
-			main: for (String s : Arrays.stream(OreDictionary.getOreIDs(stack)).mapToObj(OreDictionary::getOreName).filter(s -> s.startsWith("ingot")).collect(Collectors.toList())) {
+			List<IBlockState> states = new ArrayList<>();
+			for (String s : Arrays.stream(OreDictionary.getOreIDs(stack)).mapToObj(OreDictionary::getOreName).filter(s -> s.startsWith("ingot")).collect(Collectors.toList())) {
 				String block = s.replace("ingot", "block");
 				for (ItemStack b : OreDictionary.getOres(block)) {
 					if (b.getItem() instanceof ItemBlock) {
 						IBlockState state = ((ItemBlock) b.getItem()).getBlock().getStateFromMeta(b.getMetadata());
-						TextureAtlasSprite tmp = mc.getBlockRendererDispatcher().getModelForState(state).getParticleTexture();
-						if (tmp != mc.getTextureMapBlocks().getMissingSprite()) {
-							tas = tmp;
-							break main;
-						}
+						states.add(state);
 					}
 				}
-
+			}
+			states.sort((s1, s2) -> {
+				int i1 = Stackable.preferredTextures.indexOf(s1.getBlock().getRegistryName().getResourceDomain()), i2 = Stackable.preferredTextures.indexOf(s2.getBlock().getRegistryName().getResourceDomain());
+				return Integer.compare(i1 == -1 ? 999 : i1, i2 == -1 ? 999 : i2);
+			});
+			for (IBlockState state : states) {
+				TextureAtlasSprite tmp = mc.getBlockRendererDispatcher().getModelForState(state).getParticleTexture();
+				if (tmp != mc.getTextureMapBlocks().getMissingSprite()) {
+					tas = tmp;
+					break;
+				}
 			}
 		}
 		cachedSprites.put(stack, tas);

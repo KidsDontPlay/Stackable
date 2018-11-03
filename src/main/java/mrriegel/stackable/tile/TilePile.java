@@ -271,19 +271,19 @@ public abstract class TilePile extends TileEntity {
 		lis.add("Whitelist " + (useWhitelist ? "enabled" : "disabled") + "/" + "Blacklist " + (!useWhitelist ? "enabled" : "disabled"));
 		if (!blacklist.isEmpty()) {
 			lis.add("Blacklist:");
-			blacklist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+			blacklist.forEach(s -> lis.add("  " + s.getDisplayName()));
 		}
 		if (!whitelist.isEmpty()) {
 			lis.add("Whitelist:");
-			whitelist.stream().forEach(s -> lis.add("  " + s.getDisplayName()));
+			whitelist.forEach(s -> lis.add("  " + s.getDisplayName()));
 		}
 		if (!min.isEmpty()) {
 			lis.add("Minimum:");
-			min.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+			min.object2IntEntrySet().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
 		}
 		if (!max.isEmpty()) {
 			lis.add("Maximum:");
-			max.object2IntEntrySet().stream().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
+			max.object2IntEntrySet().forEach(e -> lis.add("  " + e.getKey().getDisplayName() + ": " + e.getIntValue()));
 		}
 		return lis.stream().distinct().collect(Collectors.toList());
 	}

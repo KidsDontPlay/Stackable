@@ -105,8 +105,11 @@ public class BlockPile extends Block {
 	@Override
 	public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player) {
 		TileEntity t = world.getTileEntity(pos);
-		if (t instanceof TilePile)
-			return ItemHandlerHelper.copyStackWithSize(((TilePile) t).lookingStack(player), 1);
+		if (t instanceof TilePile) {
+			ItemStack stack = ((TilePile) t).lookingStack(player);
+			if (!stack.isEmpty())
+				return ItemHandlerHelper.copyStackWithSize(stack, 1);
+		}
 		return ItemStack.EMPTY;
 	}
 
@@ -157,10 +160,12 @@ public class BlockPile extends Block {
 					return true;
 				} else if (playerIn.getHeldItemMainhand().isEmpty()) {
 					ItemStack looking = tile.lookingStack(playerIn);
+					if (looking.isEmpty())
+						return true;
 					PlayerMainInvWrapper playerInv = new PlayerMainInvWrapper(playerIn.inventory);
 					for (int i = 0; i < playerInv.getSlots(); i++) {
 						ItemStack s = playerInv.getStackInSlot(i);
-						if (s.isItemEqual(looking)) {
+						if (!s.isEmpty() && s.isItemEqual(looking)) {
 							ItemStack rest = tile.getMaster().inv.insertItem(playerInv.extractItem(i, 64, false), false);
 							worldIn.playSound(null, pos, tile.placeSound(stack), SoundCategory.BLOCKS, .3f, worldIn.rand.nextFloat() / 2f + .5f);
 							if (!rest.isEmpty()) {
